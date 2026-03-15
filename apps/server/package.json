@@ -1,0 +1,41 @@
+{
+  "name": "@superchat/server",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@socket.io/redis-adapter": "^8.3.0",
+    "@superchat/shared": "workspace:*",
+    "@trpc/server": "^11",
+    "better-auth": "^1",
+    "bullmq": "^5",
+    "dotenv": "^16",
+    "drizzle-orm": "^0.41",
+    "fastify": "^5",
+    "fastify-plugin": "^5",
+    "ioredis": "^5",
+    "pg": "^8",
+    "postgres": "^3",
+    "socket.io": "^4",
+    "superjson": "^2",
+    "zod": "^3.24"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/pg": "^8",
+    "drizzle-kit": "^0.31",
+    "tsx": "^4",
+    "typescript": "^5.7",
+    "vitest": "^3"
+  }
+}
