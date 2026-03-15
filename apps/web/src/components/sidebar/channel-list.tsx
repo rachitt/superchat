@@ -1,6 +1,6 @@
 "use client";
 
-import { useChatStore } from "@/stores/chat-store";
+import { useParams, useRouter } from "next/navigation";
 
 interface Channel {
   id: string;
@@ -13,8 +13,8 @@ interface ChannelListProps {
 }
 
 export function ChannelList({ channels }: ChannelListProps) {
-  const activeChannelId = useChatStore((s) => s.activeChannelId);
-  const setActiveChannel = useChatStore((s) => s.setActiveChannel);
+  const params = useParams<{ workspaceSlug: string; channelId?: string }>();
+  const router = useRouter();
 
   return (
     <div className="flex flex-col gap-0.5 px-2">
@@ -24,9 +24,9 @@ export function ChannelList({ channels }: ChannelListProps) {
       {channels.map((channel) => (
         <button
           key={channel.id}
-          onClick={() => setActiveChannel(channel.id)}
+          onClick={() => router.push(`/${params.workspaceSlug}/${channel.id}`)}
           className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
-            activeChannelId === channel.id
+            params.channelId === channel.id
               ? "bg-zinc-700 text-zinc-100"
               : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
           }`}

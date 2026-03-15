@@ -1,9 +1,9 @@
 import type { Server, Socket } from "socket.io";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import type { ClientToServerEvents, ServerToClientEvents } from "@superchat/shared";
 import { sendMessageSchema } from "@superchat/shared";
 import { db } from "../../db/index.js";
-import { messages, users } from "../../db/schema/index.js";
+import { messages, users, reactions } from "../../db/schema/index.js";
 
 type IOServer = Server<ClientToServerEvents, ServerToClientEvents>;
 type IOSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -90,6 +90,47 @@ export function registerMessageHandlers(io: IOServer, socket: IOSocket) {
       io.to(`channel:${deleted.channelId}`).emit("message:deleted", {
         messageId: deleted.id,
         channelId: deleted.channelId,
+      });
+    }
+  });
+
+  socket.on("message:react", async ({ messageId, emoji }) => {
+    const existing = await db
+      .select()
+      .from(reactions)
+      .where(
+        and(
+          eq(reactions.messageId, messageId),
+          eq(reactions.userId, userId),
+          eq(reactions.emoji, emoji)
+        )
+      )
+      .limit(1);
+
+    let action: "add" | "remove";
+    if (existing.length > 0) {
+      await db
+        .delete(reactions)
+        .where(
+          and(
+            eq(reactions.messageId, messageId),
+            eq(reactions.userId, userId),
+            eq(reactions.emoji, emoji)
+          )
+        );
+      action = "remove";
+    } else {
+      await db.insert(reactions).values({ messageId, userId, emoji });
+      action = "add";
+    }
+
+    const [msg] = await db.select().from(messages).where(eq(messages.id, messageId)).limit(1);
+    if (msg) {
+      io.to(`channel:${msg.channelId}`).emit("message:reaction", {
+        messageId,
+        userId,
+        emoji,
+        action,
       });
     }
   });

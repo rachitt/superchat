@@ -15,6 +15,7 @@
     "@trpc/react-query": "^11",
     "@trpc/server": "^11",
     "@trpc/tanstack-react-query": "^11.13.4",
+    "better-auth": "^1.5.5",
     "lucide-react": "^0.469",
     "next": "16.1.6",
     "react": "19.2.3",

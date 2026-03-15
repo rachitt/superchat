@@ -6,7 +6,8 @@ import { useChatStore } from "@/stores/chat-store";
 
 export function useSocket() {
   const initialized = useRef(false);
-  const { addMessage, updateMessage, removeMessage, setTyping } = useChatStore();
+  const { addMessage, updateMessage, removeMessage, setTyping, toggleReaction } =
+    useChatStore();
 
   useEffect(() => {
     if (initialized.current) return;
@@ -26,8 +27,12 @@ export function useSocket() {
       removeMessage(messageId, channelId);
     });
 
-    socket.on("typing:update", ({ channelId, userId, isTyping }) => {
-      setTyping(channelId, userId, isTyping);
+    socket.on("typing:update", ({ channelId, userId, username, isTyping }) => {
+      setTyping(channelId, userId, username, isTyping);
+    });
+
+    socket.on("message:reaction", ({ messageId, userId, emoji, action }) => {
+      toggleReaction(messageId, userId, emoji, action);
     });
 
     return () => {
@@ -35,7 +40,8 @@ export function useSocket() {
       socket.off("message:updated");
       socket.off("message:deleted");
       socket.off("typing:update");
+      socket.off("message:reaction");
       initialized.current = false;
     };
-  }, [addMessage, updateMessage, removeMessage, setTyping]);
+  }, [addMessage, updateMessage, removeMessage, setTyping, toggleReaction]);
 }

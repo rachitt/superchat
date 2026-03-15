@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import { getSocket } from "@/lib/socket";
 import { MAX_MESSAGE_LENGTH } from "@superchat/shared";
+import { FileUpload } from "./file-upload";
 
 interface MessageInputProps {
   channelId: string;
@@ -36,6 +37,17 @@ export function MessageInput({ channelId }: MessageInputProps) {
     setContent("");
   }, [content, channelId]);
 
+  const handleFileUpload = useCallback(
+    (url: string, fileName: string) => {
+      const socket = getSocket();
+      socket.emit("message:send", {
+        channelId,
+        content: `📎 [${fileName}](${url})`,
+      });
+    },
+    [channelId]
+  );
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -46,6 +58,7 @@ export function MessageInput({ channelId }: MessageInputProps) {
   return (
     <div className="border-t border-zinc-800 p-4">
       <div className="flex items-end gap-2 rounded-lg bg-zinc-800 p-2">
+        <FileUpload onUpload={handleFileUpload} />
         <textarea
           value={content}
           onChange={(e) => {

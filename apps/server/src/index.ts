@@ -1,5 +1,6 @@
 import "dotenv/config";
 import Fastify from "fastify";
+import cors from "@fastify/cors";
 import {
   fastifyTRPCPlugin,
   type FastifyTRPCPluginOptions,
@@ -10,6 +11,7 @@ import type { ClientToServerEvents, ServerToClientEvents } from "@superchat/shar
 import { appRouter, type AppRouter } from "./trpc/routers/index.js";
 import { createContext } from "./trpc/context.js";
 import { db } from "./db/index.js";
+import { auth } from "./lib/auth.js";
 import { pubRedis, subRedis } from "./lib/redis.js";
 import { setupSocketHandlers } from "./socket/index.js";
 
@@ -19,12 +21,39 @@ const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 async function main() {
   const fastify = Fastify({ logger: true });
 
+  // ── CORS ──
+  await fastify.register(cors, {
+    origin: FRONTEND_URL,
+    credentials: true,
+  });
+
+  // ── Better Auth ──
+  fastify.all("/api/auth/*", async (req, reply) => {
+    const url = new URL(req.url, `http://${req.hostname}`);
+    const headers = new Headers();
+    for (const [key, value] of Object.entries(req.headers)) {
+      if (value) headers.set(key, Array.isArray(value) ? value.join(", ") : value);
+    }
+    const body = req.method !== "GET" && req.method !== "HEAD" ? JSON.stringify(req.body) : undefined;
+    const request = new Request(url, {
+      method: req.method,
+      headers,
+      body,
+    });
+    const response = await auth.handler(request);
+    const resHeaders: Record<string, string> = {};
+    response.headers.forEach((value, key) => {
+      resHeaders[key] = value;
+    });
+    reply.status(response.status).headers(resHeaders).send(response.body);
+  });
+
   // ── tRPC ──
   await fastify.register(fastifyTRPCPlugin, {
     prefix: "/trpc",
     trpcOptions: {
       router: appRouter,
-      createContext: createContext(db),
+      createContext: createContext(db, auth),
     } satisfies FastifyTRPCPluginOptions<AppRouter>["trpcOptions"],
   });
 
@@ -37,7 +66,7 @@ async function main() {
     }
   );
 
-  setupSocketHandlers(io);
+  setupSocketHandlers(io, auth);
 
   // ── Health check ──
   fastify.get("/health", async () => ({ status: "ok" }));

@@ -14,6 +14,9 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1009.0",
+    "@aws-sdk/s3-request-presigner": "^3.1009.0",
+    "@fastify/cors": "^11.2.0",
     "@socket.io/redis-adapter": "^8.3.0",
     "@superchat/shared": "workspace:*",
     "@trpc/server": "^11",
