@@ -55,6 +55,7 @@ export function registerMessageHandlers(io: IOServer, socket: IOSocket) {
       type: message.type as any,
       content: message.content,
       payload: message.payload as Record<string, unknown> | undefined,
+      payloadVersion: message.payloadVersion,
       parentId: message.parentId,
       createdAt: message.createdAt.toISOString(),
     };
@@ -81,6 +82,7 @@ export function registerMessageHandlers(io: IOServer, socket: IOSocket) {
         type: updated.type as any,
         content: updated.content,
         payload: updated.payload as Record<string, unknown> | undefined,
+        payloadVersion: updated.payloadVersion,
         parentId: updated.parentId,
         createdAt: updated.createdAt.toISOString(),
       });

@@ -299,7 +299,9 @@ export function registerGameHandlers(io: IOServer, socket: IOSocket) {
         .where(eq(games.id, gameId));
 
       const finalPlayers = await getGamePlayers(gameId);
-      const winner = finalPlayers.reduce((a, b) => (a.score > b.score ? a : b), finalPlayers[0]);
+      const winner = finalPlayers.length > 0
+        ? finalPlayers.reduce((a, b) => (a.score > b.score ? a : b))
+        : null;
 
       io.to(`game:${gameId}`).emit("game:finished", {
         gameId,
