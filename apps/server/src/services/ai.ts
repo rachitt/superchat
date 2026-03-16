@@ -6,6 +6,9 @@ import { db } from "../db/index.js";
 import { messages, user as users } from "../db/schema/index.js";
 import { AI_MAX_CONTEXT_MESSAGES, AI_BOT_NAME, AI_SMART_REPLY_COUNT } from "@superchat/shared";
 import { getSystemPrompt } from "./prompt-manager.js";
+import { findSimilar } from "./embeddings.js";
+import { getMemories } from "./ai-memory.js";
+import { sanitizeForAi } from "../lib/sanitize.js";
 
 interface ChannelMessage {
   role: "user" | "assistant";
@@ -45,6 +48,7 @@ export interface StreamAiChatOptions {
   channelId: string;
   userMessage: string;
   userName: string;
+  userId?: string;
   /** Workspace ID, used to fetch workspace-specific system prompt */
   workspaceId?: string;
   /** Override the system prompt (e.g. from workspace settings) */
@@ -61,30 +65,74 @@ export interface StreamAiChatOptions {
  * Stream an AI response for a chat message. Returns an async iterable of text chunks.
  */
 export async function streamAiChat(opts: StreamAiChatOptions): Promise<any> {
-  const { channelId, userMessage, userName, workspaceId, systemPrompt, extraContext, tools, maxOutputTokens = 1500 } = opts;
-  const context = await getChannelContext(channelId);
+  const { channelId, userMessage, userName, userId, workspaceId, systemPrompt, extraContext, tools, maxOutputTokens = 1500 } = opts;
+
+  // Sanitize user input to prevent prompt injection
+  const sanitizedMessage = sanitizeForAi(userMessage);
+
+  // Fetch recent messages (last 5) and RAG similar messages (top 10), deduplicated
+  const [recentContext, ragResults] = await Promise.all([
+    getChannelContext(channelId, 5),
+    findSimilarSafe(channelId, sanitizedMessage),
+  ]);
+
+  const ragContext: ChannelMessage[] = ragResults.map((r) => ({
+    role: "user" as const,
+    content: r.content,
+    name: r.authorName,
+  }));
+
+  const mergedContext = deduplicateContext([
+    ...ragContext,
+    ...(extraContext ?? []),
+    ...recentContext,
+  ]);
 
   // Resolve system prompt: explicit override > workspace prompt > default
-  const resolvedPrompt = systemPrompt ?? (workspaceId ? await getSystemPrompt(workspaceId) : await getSystemPrompt("__default__"));
+  let finalSystemPrompt = systemPrompt ?? (workspaceId ? await getSystemPrompt(workspaceId) : await getSystemPrompt("__default__"));
 
-  // Merge extra context (e.g. RAG results) with recent messages, deduplicating
-  const allContext = extraContext ? deduplicateContext([...extraContext, ...context]) : context;
+  // Append tool descriptions to system prompt
+  finalSystemPrompt += `\n\nYou have access to tools that let you take actions:
+- createPoll: Create a poll for users to vote on
+- startGame: Start a game (trivia, wordle, tic_tac_toe, cards)
+- searchMessages: Search channel message history
+- pinMessage: Pin or unpin a message
+- getCurrentTime: Get the current date/time
+Use tools when the user asks you to perform these actions.`;
+
+  // Load user memories into system prompt
+  if (userId && workspaceId) {
+    const memories = await getMemories(userId, workspaceId);
+    if (memories.length > 0) {
+      const memoryBlock = memories.map((m) => `- ${m.key}: ${m.value}`).join("\n");
+      finalSystemPrompt += `\n\nWhat you remember about this user:\n${memoryBlock}`;
+    }
+  }
 
   const result = streamText({
     model: getModel(),
-    system: resolvedPrompt,
+    system: finalSystemPrompt,
     messages: [
-      ...allContext.map((m) => ({
+      ...mergedContext.map((m) => ({
         role: m.role,
         content: m.name ? `[${m.name}]: ${m.content}` : m.content,
       })),
-      { role: "user" as const, content: `[${userName}]: ${userMessage}` },
+      { role: "user" as const, content: `[${userName}]: ${sanitizedMessage}` },
     ],
     maxOutputTokens,
-    ...(tools ? { tools } : {}),
+    ...(tools ? { tools, maxSteps: 3 } : {}),
   });
 
   return result;
+}
+
+/** Safe wrapper around findSimilar that returns empty on failure (e.g. no pgvector). */
+async function findSimilarSafe(channelId: string, query: string) {
+  try {
+    return await findSimilar(channelId, query, 10);
+  } catch {
+    return [];
+  }
 }
 
 /** Deduplicate context messages by content */
@@ -143,6 +191,58 @@ export async function summarizeChannel(channelId: string, messageCount: number =
     model: getModel(),
     system: "You are a concise summarizer. Summarize chat conversations into key points, decisions, and action items.",
     prompt: `Summarize this conversation:\n\n${context.map((m) => `${m.name ?? "User"}: ${m.content}`).join("\n")}`,
+    maxOutputTokens: 800,
+  });
+
+  return text;
+}
+
+/**
+ * Summarize a thread (all replies to a parent message).
+ */
+export async function summarizeThread(parentId: string): Promise<string> {
+  const [parentMsg, ...replies] = await Promise.all([
+    db
+      .select({
+        content: messages.content,
+        type: messages.type,
+        username: users.username,
+        displayName: users.name,
+      })
+      .from(messages)
+      .innerJoin(users, eq(users.id, messages.authorId))
+      .where(and(eq(messages.id, parentId), isNull(messages.deletedAt)))
+      .limit(1)
+      .then((rows) => rows[0]),
+    db
+      .select({
+        content: messages.content,
+        type: messages.type,
+        username: users.username,
+        displayName: users.name,
+      })
+      .from(messages)
+      .innerJoin(users, eq(users.id, messages.authorId))
+      .where(and(eq(messages.parentId, parentId), isNull(messages.deletedAt)))
+      .orderBy(messages.createdAt)
+      .then((rows) => rows),
+  ]);
+
+  const threadMessages = parentMsg ? [parentMsg, ...replies.flat()] : replies.flat();
+
+  if (threadMessages.length < 2) {
+    return "Not enough messages in this thread to summarize.";
+  }
+
+  const context = threadMessages.map((msg) => {
+    const name = msg.displayName ?? msg.username ?? "User";
+    return `${name}: ${msg.content}`;
+  });
+
+  const { text } = await generateText({
+    model: getModel(),
+    system: "You are a concise summarizer. Summarize chat thread conversations into key points, decisions, and action items.",
+    prompt: `Summarize this thread:\n\n${context.join("\n")}`,
     maxOutputTokens: 800,
   });
 

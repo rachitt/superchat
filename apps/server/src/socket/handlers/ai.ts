@@ -1,14 +1,17 @@
 import type { Server, Socket } from "socket.io";
-import { eq } from "drizzle-orm";
+import { eq, and, desc, isNull } from "drizzle-orm";
 import type { ClientToServerEvents, ServerToClientEvents } from "@superchat/shared";
 import { AI_BOT_NAME } from "@superchat/shared";
 import { streamAiChat } from "../../services/ai.js";
 import { db } from "../../db/index.js";
 import { messages, user as users } from "../../db/schema/index.js";
+import { channels } from "../../db/schema/channels.js";
 import { checkAiRateLimit } from "../../lib/rate-limit.js";
 import { AppError, ErrorCode } from "../../lib/errors.js";
 import { createChildLogger } from "../../lib/logger.js";
 import { aiRequestsTotal, aiRequestDuration } from "../../lib/metrics.js";
+import { buildAiTools } from "../../services/ai-tools.js";
+import { getQueue } from "../../workers/queue.js";
 
 const log = createChildLogger({ module: "ai" });
 
@@ -43,15 +46,54 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
 
     const userName = author?.name ?? author?.username ?? "User";
 
+    // Look up workspaceId from the channel
+    const [channel] = await db
+      .select({ workspaceId: channels.workspaceId })
+      .from(channels)
+      .where(eq(channels.id, channelId))
+      .limit(1);
+
+    const workspaceId = channel?.workspaceId;
+
+    // Build AI tools with context
+    const aiTools = buildAiTools({ channelId, userId, io });
+
+    // Determine thread parentId:
+    // If the caller already specified a parentId (continuing a thread), use it.
+    // Otherwise, find the user's message that triggered this AI chat to auto-thread.
+    let threadParentId = parentId ?? null;
+    if (!threadParentId) {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const [userMsg] = await db
+          .select({ id: messages.id })
+          .from(messages)
+          .where(
+            and(
+              eq(messages.channelId, channelId),
+              eq(messages.authorId, userId),
+              eq(messages.type, "text"),
+              isNull(messages.deletedAt)
+            )
+          )
+          .orderBy(desc(messages.createdAt))
+          .limit(1);
+        if (userMsg) {
+          threadParentId = userMsg.id;
+          break;
+        }
+        if (attempt < 2) await new Promise((r) => setTimeout(r, 100));
+      }
+    }
+
     // Create a placeholder bot message in the database
     const [botMessage] = await db
       .insert(messages)
       .values({
         channelId,
-        authorId: userId, // attributed to the asking user but type=system marks it as bot
+        authorId: userId,
         type: "system",
-        content: "", // will be updated when streaming completes
-        parentId: parentId ?? null,
+        content: "",
+        parentId: threadParentId,
       })
       .returning();
 
@@ -64,7 +106,7 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
       authorId: userId,
       type: "system",
       content: "",
-      parentId: parentId ?? null,
+      parentId: threadParentId,
       createdAt: botMessage.createdAt.toISOString(),
     });
 
@@ -77,19 +119,37 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
     const timeout = setTimeout(() => abortController.abort(), STREAM_TIMEOUT_MS);
 
     try {
-      const result = await streamAiChat({ channelId, userMessage: message, userName });
+      const result = await streamAiChat({
+        channelId,
+        userMessage: message,
+        userName,
+        userId,
+        workspaceId,
+        tools: aiTools,
+      });
 
       let fullContent = "";
 
-      for await (const chunk of result.textStream) {
+      for await (const chunk of result.fullStream) {
         if (abortController.signal.aborted) break;
 
-        fullContent += chunk;
-        io.to(`channel:${channelId}`).emit("ai:stream", {
-          channelId,
-          messageId,
-          chunk,
-        });
+        if (chunk.type === "text-delta") {
+          fullContent += chunk.textDelta;
+          io.to(`channel:${channelId}`).emit("ai:stream", {
+            channelId,
+            messageId,
+            chunk: chunk.textDelta,
+            parentId: threadParentId,
+          });
+        } else if (chunk.type === "tool-result") {
+          io.to(`channel:${channelId}`).emit("ai:tool_call", {
+            channelId,
+            messageId,
+            toolName: chunk.toolName,
+            args: chunk.args as Record<string, unknown>,
+            result: chunk.result,
+          });
+        }
       }
 
       clearTimeout(timeout);
@@ -122,10 +182,21 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
         channelId,
         messageId,
         content: fullContent,
+        parentId: threadParentId,
       });
 
       aiRequestsTotal.inc({ status: "success" });
       aiRequestDuration.observe({}, (Date.now() - aiStart) / 1000);
+
+      // Enqueue memory extraction in the background
+      if (workspaceId && fullContent) {
+        const conversationText = `User (${userName}): ${message}\nAssistant: ${fullContent}`;
+        getQueue("ai-memory").add("extract", {
+          conversationText,
+          userId,
+          workspaceId,
+        });
+      }
     } catch (err) {
       clearTimeout(timeout);
       log.error({ err, channelId, messageId }, "AI stream failed");

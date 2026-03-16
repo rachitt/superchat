@@ -5,6 +5,7 @@ const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 
 const QUEUE_NAMES = [
   "ai-embeddings",
+  "ai-memory",
   "notifications",
   "game-timeouts",
   "message-cleanup",
@@ -12,9 +13,9 @@ const QUEUE_NAMES = [
 
 export type QueueName = (typeof QUEUE_NAMES)[number];
 
-const queues = new Map<QueueName, Queue>();
+const queues = new Map<string, Queue>();
 
-export function getQueue(name: QueueName): Queue {
+export function getQueue(name: string): Queue {
   let queue = queues.get(name);
   if (!queue) {
     queue = new Queue(name, { connection: { url: REDIS_URL, maxRetriesPerRequest: null } });

@@ -5,3 +5,5 @@ export * from "./messages";
 export * from "./games";
 export * from "./notifications";
 export * from "./prompts";
+export * from "./embeddings";
+export * from "./ai-memory";
