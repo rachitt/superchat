@@ -4,6 +4,7 @@ import type { ClientToServerEvents, ServerToClientEvents } from "@superchat/shar
 import { sendMessageSchema } from "@superchat/shared";
 import { db } from "../../db/index.js";
 import { messages, user as users, reactions } from "../../db/schema/index.js";
+import { autoModerate } from "../../services/moderation.js";
 
 type IOServer = Server<ClientToServerEvents, ServerToClientEvents>;
 type IOSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -15,6 +16,13 @@ export function registerMessageHandlers(io: IOServer, socket: IOSocket) {
     const parsed = sendMessageSchema.safeParse(data);
     if (!parsed.success) {
       socket.emit("error", { message: "Invalid message data", code: "VALIDATION_ERROR" });
+      return;
+    }
+
+    // Auto-moderation check
+    const flagReason = await autoModerate(parsed.data.content);
+    if (flagReason) {
+      socket.emit("error", { message: `Message blocked: ${flagReason}`, code: "MODERATION_ERROR" });
       return;
     }
 

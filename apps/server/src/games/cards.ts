@@ -61,6 +61,7 @@ export const cardsEngine: GameEngine = {
       turnOrder,
       scores,
       phase: "playing",
+      cardsPlayedThisRound: 0,
     };
   },
 
@@ -89,11 +90,11 @@ export const cardsEngine: GameEngine = {
       newHands[playerId] = hand.filter((_, i) => i !== cardIndex);
       const newDiscard = [...s.discard, card];
 
-      // Check if all players have played this round (one card each in discard per round)
-      const roundCards = newDiscard.slice(-1); // just played
+      // Track how many cards have been played this round
+      const cardsPlayedThisRound = (s.cardsPlayedThisRound || 0) + 1;
       const currentIdx = s.turnOrder.indexOf(playerId);
       const nextIdx = (currentIdx + 1) % s.turnOrder.length;
-      const isRoundEnd = nextIdx === 0; // back to first player
+      const isRoundEnd = cardsPlayedThisRound === s.turnOrder.length;
 
       const newScores = { ...s.scores };
 
@@ -127,6 +128,7 @@ export const cardsEngine: GameEngine = {
             scores: newScores,
             phase: "finished",
             currentTurnUserId: null,
+            cardsPlayedThisRound: 0,
           },
           finished: true,
         };
@@ -139,6 +141,7 @@ export const cardsEngine: GameEngine = {
           discard: newDiscard,
           scores: newScores,
           currentTurnUserId: s.turnOrder[nextIdx],
+          cardsPlayedThisRound: isRoundEnd ? 0 : cardsPlayedThisRound,
         },
         finished: false,
       };

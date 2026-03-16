@@ -50,7 +50,7 @@ async function getChannelContext(channelId: string, limit: number = AI_MAX_CONTE
 /**
  * Stream an AI response for a chat message. Returns an async iterable of text chunks.
  */
-export async function streamAiChat(channelId: string, userMessage: string, userName: string) {
+export async function streamAiChat(channelId: string, userMessage: string, userName: string): Promise<any> {
   const context = await getChannelContext(channelId);
 
   const result = streamText({

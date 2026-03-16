@@ -4,9 +4,9 @@ import type { MessageData } from "@superchat/shared";
 interface MessageWithAuthor extends MessageData {
   author?: {
     id: string;
-    username: string;
-    displayName: string;
-    avatarUrl: string | null;
+    username: string | null;
+    name: string;
+    image: string | null;
   };
 }
 

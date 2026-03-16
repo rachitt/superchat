@@ -19,7 +19,7 @@ export const google = geminiApiKey
   : null;
 
 /** Returns the best available model. Prefers OpenAI, then Anthropic, then Gemini. */
-export function getModel() {
+export function getModel(): any {
   if (openai) return openai("gpt-4o");
   if (anthropic) return anthropic("claude-sonnet-4-20250514");
   if (google) return google("gemini-2.5-flash-lite");
@@ -27,7 +27,7 @@ export function getModel() {
 }
 
 /** Lighter model for smart replies and moderation */
-export function getLightModel() {
+export function getLightModel(): any {
   if (openai) return openai("gpt-4o-mini");
   if (anthropic) return anthropic("claude-haiku-4-5-20251001");
   if (google) return google("gemini-2.5-flash-lite");

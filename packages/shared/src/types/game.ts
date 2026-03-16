@@ -107,6 +107,7 @@ export interface CardsState {
   turnOrder: string[];
   scores: Record<string, number>;
   phase: "playing" | "finished";
+  cardsPlayedThisRound: number;
 }
 
 export type GameState =

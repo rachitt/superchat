@@ -14,9 +14,9 @@ interface MessageItemProps {
   message: MessageData & {
     author?: {
       id: string;
-      username: string;
-      displayName: string;
-      avatarUrl: string | null;
+      username: string | null;
+      name: string;
+      image: string | null;
     };
   };
   showThread?: boolean;
@@ -35,6 +35,7 @@ export function MessageItem({ message, showThread = true }: MessageItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [loadingReplies, setLoadingReplies] = useState(false);
+  const [smartReplyError, setSmartReplyError] = useState(false);
 
   const trpc = useTRPC();
   const smartReplyMutation = useMutation(
@@ -42,7 +43,7 @@ export function MessageItem({ message, showThread = true }: MessageItemProps) {
   );
 
   const isOwn = session?.user?.id === message.authorId;
-  const displayName = message.author?.displayName ?? message.authorId.slice(0, 8);
+  const displayName = message.author?.name ?? message.authorId.slice(0, 8);
   const initials = displayName.slice(0, 2).toUpperCase();
 
   const time = new Date(message.createdAt).toLocaleTimeString([], {
@@ -71,6 +72,7 @@ export function MessageItem({ message, showThread = true }: MessageItemProps) {
   const handleSmartReplies = async () => {
     if (smartReplies || loadingReplies) return;
     setLoadingReplies(true);
+    setSmartReplyError(false);
     try {
       const result = await smartReplyMutation.mutateAsync({
         channelId: message.channelId,
@@ -78,7 +80,8 @@ export function MessageItem({ message, showThread = true }: MessageItemProps) {
       });
       setSmartReplies(message.id, result.replies);
     } catch {
-      // silently fail
+      setSmartReplyError(true);
+      setTimeout(() => setSmartReplyError(false), 3000);
     } finally {
       setLoadingReplies(false);
     }
@@ -87,9 +90,9 @@ export function MessageItem({ message, showThread = true }: MessageItemProps) {
   return (
     <div className="group relative flex gap-3 px-4 py-1.5 hover:bg-zinc-800/50">
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-medium text-white">
-        {message.author?.avatarUrl ? (
+        {message.author?.image ? (
           <img
-            src={message.author.avatarUrl}
+            src={message.author.image}
             alt={displayName}
             className="h-8 w-8 rounded-full object-cover"
           />
@@ -183,10 +186,10 @@ export function MessageItem({ message, showThread = true }: MessageItemProps) {
         <button
           onClick={handleSmartReplies}
           disabled={loadingReplies}
-          className="rounded p-1 text-xs text-zinc-400 hover:bg-zinc-700 hover:text-violet-300 disabled:opacity-50"
-          title="Smart replies"
+          className={`rounded p-1 text-xs hover:bg-zinc-700 disabled:opacity-50 ${smartReplyError ? "text-red-400" : "text-zinc-400 hover:text-violet-300"}`}
+          title={smartReplyError ? "Smart replies failed" : "Smart replies"}
         >
-          {loadingReplies ? "..." : "✨"}
+          {loadingReplies ? "..." : smartReplyError ? "!" : "✨"}
         </button>
         {isOwn && (
           <>

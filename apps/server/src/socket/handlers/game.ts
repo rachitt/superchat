@@ -1,5 +1,5 @@
 import type { Server, Socket } from "socket.io";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import type { ClientToServerEvents, ServerToClientEvents, GamePlayerData, GameState } from "@superchat/shared";
 import { gameActionSchema } from "@superchat/shared";
 import { db } from "../../db/index.js";
@@ -8,6 +8,15 @@ import { getGameEngine } from "../../games/index.js";
 
 type IOServer = Server<ClientToServerEvents, ServerToClientEvents>;
 type IOSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
+
+/** Strip secret fields from game state before sending to clients */
+function sanitizeStateForClient(state: GameState): GameState {
+  if (state.type === "wordle" && state.phase === "playing") {
+    const { targetWord, ...rest } = state;
+    return { ...rest, targetWord: "" } as GameState;
+  }
+  return state;
+}
 
 async function getGamePlayers(gameId: string): Promise<GamePlayerData[]> {
   const rows = await db
@@ -152,9 +161,84 @@ export function registerGameHandlers(io: IOServer, socket: IOSocket) {
 
     io.to(`game:${gameId}`).emit("game:started", {
       gameId,
-      state: initialState,
+      state: sanitizeStateForClient(initialState),
       players,
     });
+  });
+
+  socket.on("disconnect", async () => {
+    console.log(`[Game] disconnect from ${userId}`);
+
+    // Find all games this player is in
+    const playerGames = await db
+      .select({ gameId: gamePlayers.gameId })
+      .from(gamePlayers)
+      .where(eq(gamePlayers.userId, userId));
+
+    for (const { gameId } of playerGames) {
+      const [game] = await db
+        .select()
+        .from(games)
+        .where(eq(games.id, gameId))
+        .limit(1);
+
+      if (!game) continue;
+
+      if (game.status === "waiting") {
+        // Remove from waiting games
+        await db
+          .delete(gamePlayers)
+          .where(and(eq(gamePlayers.gameId, gameId), eq(gamePlayers.userId, userId)));
+        io.to(`game:${gameId}`).emit("game:player_left", { gameId, userId });
+      } else if (game.status === "in_progress") {
+        // For in-progress games, check if it's their turn and auto-skip after a delay
+        const currentState = game.state as GameState;
+        if (currentState && "currentTurnUserId" in currentState && currentState.currentTurnUserId === userId) {
+          setTimeout(async () => {
+            try {
+              const [freshGame] = await db
+                .select()
+                .from(games)
+                .where(eq(games.id, gameId))
+                .limit(1);
+
+              if (!freshGame || freshGame.status !== "in_progress") return;
+
+              const freshState = freshGame.state as GameState;
+              if (!("currentTurnUserId" in freshState) || freshState.currentTurnUserId !== userId) return;
+
+              const engine = getGameEngine(freshGame.gameType as any);
+              const players = await getGamePlayers(gameId);
+              const result = engine.handleTimeout(freshState, players);
+
+              // If handleTimeout didn't advance the turn, manually advance it
+              if ("turnOrder" in freshState && "currentTurnUserId" in result.state) {
+                const turnOrder = (freshState as any).turnOrder as string[];
+                const currentIdx = turnOrder.indexOf(userId);
+                if (currentIdx !== -1) {
+                  const nextIdx = (currentIdx + 1) % turnOrder.length;
+                  (result.state as any).currentTurnUserId = turnOrder[nextIdx];
+                }
+              }
+
+              await db
+                .update(games)
+                .set({ state: result.state })
+                .where(eq(games.id, gameId));
+
+              const updatedPlayers = await getGamePlayers(gameId);
+              io.to(`game:${gameId}`).emit("game:state_update", {
+                gameId,
+                state: sanitizeStateForClient(result.state),
+                players: updatedPlayers,
+              });
+            } catch (err) {
+              console.error(`[Game] Error auto-skipping turn for disconnected player ${userId}:`, err);
+            }
+          }, 5000); // 5 second grace period
+        }
+      }
+    }
   });
 
   socket.on("game:action", async (data) => {
@@ -184,14 +268,23 @@ export function registerGameHandlers(io: IOServer, socket: IOSocket) {
 
     const result = engine.handleAction(currentState, userId, action, actionData, players);
 
-    // Update scores in game_players table
+    // Batch update scores in game_players table
     if (result.state && "scores" in result.state) {
       const scores = (result.state as any).scores as Record<string, number>;
-      for (const [pId, score] of Object.entries(scores)) {
-        await db
-          .update(gamePlayers)
-          .set({ score })
-          .where(and(eq(gamePlayers.gameId, gameId), eq(gamePlayers.userId, pId)));
+      const scoreEntries = Object.entries(scores);
+      if (scoreEntries.length > 0) {
+        await db.execute(sql`
+          UPDATE ${gamePlayers}
+          SET score = CASE user_id
+            ${sql.join(
+              scoreEntries.map(([pId, score]) => sql`WHEN ${pId} THEN ${score}`),
+              sql` `
+            )}
+            ELSE score
+          END
+          WHERE ${gamePlayers.gameId} = ${gameId}
+            AND ${gamePlayers.userId} IN (${sql.join(scoreEntries.map(([pId]) => sql`${pId}`), sql`, `)})
+        `);
       }
     }
 
@@ -210,7 +303,7 @@ export function registerGameHandlers(io: IOServer, socket: IOSocket) {
 
       io.to(`game:${gameId}`).emit("game:finished", {
         gameId,
-        finalState: result.state,
+        finalState: sanitizeStateForClient(result.state),
         players: finalPlayers,
         winner: winner || null,
       });
@@ -224,7 +317,7 @@ export function registerGameHandlers(io: IOServer, socket: IOSocket) {
 
       io.to(`game:${gameId}`).emit("game:state_update", {
         gameId,
-        state: result.state,
+        state: sanitizeStateForClient(result.state),
         players: updatedPlayers,
       });
     }

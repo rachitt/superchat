@@ -1,11 +1,11 @@
 import type { Server, Socket } from "socket.io";
 import { eq } from "drizzle-orm";
 import type { ClientToServerEvents, ServerToClientEvents } from "@superchat/shared";
-import { AI_BOT_NAME, AI_RATE_LIMIT_PER_MINUTE } from "@superchat/shared";
+import { AI_BOT_NAME } from "@superchat/shared";
 import { streamAiChat } from "../../services/ai.js";
 import { db } from "../../db/index.js";
 import { messages, user as users } from "../../db/schema/index.js";
-import { redis } from "../../lib/redis.js";
+import { checkAiRateLimit } from "../../lib/rate-limit.js";
 
 type IOServer = Server<ClientToServerEvents, ServerToClientEvents>;
 type IOSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -18,13 +18,11 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
 
   socket.on("ai:chat", async ({ channelId, message, parentId }) => {
     // Rate limit check
-    const key = `ai:ratelimit:${userId}`;
-    const count = await redis.incr(key);
-    if (count === 1) await redis.expire(key, 60);
-    if (count > AI_RATE_LIMIT_PER_MINUTE) {
+    const rateLimit = await checkAiRateLimit(userId);
+    if (rateLimit.limited) {
       socket.emit("ai:stream:error", {
         channelId,
-        error: `Rate limit exceeded. Max ${AI_RATE_LIMIT_PER_MINUTE} requests per minute.`,
+        error: rateLimit.message,
       });
       return;
     }
@@ -66,6 +64,10 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
     const abortController = new AbortController();
     activeStreams.set(messageId, abortController);
 
+    // Timeout to prevent hung streams
+    const STREAM_TIMEOUT_MS = 30_000;
+    const timeout = setTimeout(() => abortController.abort(), STREAM_TIMEOUT_MS);
+
     try {
       const result = await streamAiChat(channelId, message, userName);
 
@@ -82,6 +84,23 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
         });
       }
 
+      clearTimeout(timeout);
+
+      if (abortController.signal.aborted) {
+        const timeoutMsg = "AI response timed out after 30 seconds.";
+        await db
+          .update(messages)
+          .set({ content: fullContent ? `${fullContent}\n\n(${timeoutMsg})` : timeoutMsg })
+          .where(eq(messages.id, messageId));
+
+        io.to(`channel:${channelId}`).emit("ai:stream:error", {
+          channelId,
+          messageId,
+          error: timeoutMsg,
+        });
+        return;
+      }
+
       // Update the message in the database with the full content
       await db
         .update(messages)
@@ -94,6 +113,7 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
         content: fullContent,
       });
     } catch (err) {
+      clearTimeout(timeout);
       const errorMessage = err instanceof Error ? err.message : "AI generation failed";
 
       await db

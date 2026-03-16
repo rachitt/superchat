@@ -72,15 +72,20 @@ export function GameRoom({ gameId }: GameRoomProps) {
     );
   }
 
+  const handleAction = (action: string, data?: Record<string, unknown>) => {
+    const socket = getSocket();
+    socket.emit("game:action", { gameId, action, data: data ?? {} });
+  };
+
   switch (activeGame.gameType) {
     case "trivia":
-      return <TriviaGame game={activeGame} players={players} userId={currentUserId} />;
+      return <TriviaGame game={activeGame} players={players} userId={currentUserId} onAction={handleAction} />;
     case "wordle":
-      return <WordleGame game={activeGame} players={players} userId={currentUserId} />;
+      return <WordleGame game={activeGame} players={players} userId={currentUserId} onAction={handleAction} />;
     case "tic_tac_toe":
-      return <TicTacToeGame game={activeGame} players={players} userId={currentUserId} />;
+      return <TicTacToeGame game={activeGame} players={players} userId={currentUserId} onAction={handleAction} />;
     case "cards":
-      return <CardsGame game={activeGame} players={players} userId={currentUserId} />;
+      return <CardsGame game={activeGame} players={players} userId={currentUserId} onAction={handleAction} />;
     default:
       return (
         <div className="flex items-center justify-center p-8">

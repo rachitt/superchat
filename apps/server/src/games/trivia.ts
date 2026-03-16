@@ -69,7 +69,8 @@ export const triviaEngine: GameEngine = {
 
     if (action === "answer" && s.phase === "question") {
       const answerIndex = data.answerIndex as number;
-      if (typeof answerIndex !== "number" || answerIndex < 0 || answerIndex > 3) {
+      const currentQ = s.questions[s.currentQuestionIndex];
+      if (typeof answerIndex !== "number" || answerIndex < 0 || answerIndex >= currentQ.options.length) {
         return { state, finished: false };
       }
       if (s.answers[playerId] !== undefined) {
