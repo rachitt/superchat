@@ -59,6 +59,7 @@ export function registerMessageHandlers(io: IOServer, socket: IOSocket) {
       payload: message.payload as Record<string, unknown> | undefined,
       payloadVersion: message.payloadVersion,
       parentId: message.parentId,
+      expiresAt: message.expiresAt?.toISOString() ?? null,
       createdAt: message.createdAt.toISOString(),
     };
 

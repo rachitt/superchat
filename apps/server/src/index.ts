@@ -60,7 +60,7 @@ async function main() {
     const ip = req.ip;
     const result = await apiGeneralLimiter.check(ip);
     if (result.limited) {
-      reply
+      return reply
         .status(429)
         .header("Retry-After", String(result.retryAfter ?? 60))
         .send({ error: "Too many requests", retryAfter: result.retryAfter });

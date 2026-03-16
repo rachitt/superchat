@@ -65,7 +65,7 @@ export async function streamAiChat(opts: StreamAiChatOptions): Promise<any> {
   const context = await getChannelContext(channelId);
 
   // Resolve system prompt: explicit override > workspace prompt > default
-  const resolvedPrompt = systemPrompt ?? (workspaceId ? await getSystemPrompt(workspaceId) : await getSystemPrompt(""));
+  const resolvedPrompt = systemPrompt ?? (workspaceId ? await getSystemPrompt(workspaceId) : await getSystemPrompt("__default__"));
 
   // Merge extra context (e.g. RAG results) with recent messages, deduplicating
   const allContext = extraContext ? deduplicateContext([...extraContext, ...context]) : context;

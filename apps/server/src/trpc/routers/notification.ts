@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, desc, isNull } from "drizzle-orm";
+import { eq, and, desc, isNull, sql } from "drizzle-orm";
 import { router, protectedProcedure } from "../trpc.js";
 import { notifications } from "../../db/schema/index.js";
 import {
@@ -27,7 +27,6 @@ export const notificationRouter = router({
           .limit(1);
 
         if (cursorNotif) {
-          const { sql } = await import("drizzle-orm");
           conditions.push(
             sql`${notifications.createdAt} < ${cursorNotif.createdAt}`
           );

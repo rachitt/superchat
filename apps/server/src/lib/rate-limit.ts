@@ -32,20 +32,18 @@ export class RateLimiter {
     const now = Date.now();
     const windowMs = this.preset.windowSeconds * 1000;
     const redisKey = `rl:${this.prefix}:${key}`;
+    const member = `${now}:${Math.random().toString(36).slice(2)}`;
 
     // Sliding window using sorted set
     const pipeline = redis.pipeline();
     pipeline.zremrangebyscore(redisKey, 0, now - windowMs);
-    pipeline.zadd(redisKey, now, `${now}:${Math.random()}`);
-    pipeline.zcard(redisKey);
+    pipeline.zcard(redisKey); // count BEFORE adding
     pipeline.expire(redisKey, this.preset.windowSeconds);
 
     const results = await pipeline.exec();
-    const count = (results?.[2]?.[1] as number) ?? 0;
+    const count = (results?.[1]?.[1] as number) ?? 0;
 
-    if (count > this.preset.maxRequests) {
-      // Remove the entry we just added since it's over limit
-      await redis.zremrangebyscore(redisKey, now, now);
+    if (count >= this.preset.maxRequests) {
       const oldestEntry = await redis.zrange(redisKey, 0, 0, "WITHSCORES");
       const oldestTime = oldestEntry.length >= 2 ? parseInt(oldestEntry[1], 10) : now;
       const retryAfter = Math.ceil((oldestTime + windowMs - now) / 1000);
@@ -57,9 +55,12 @@ export class RateLimiter {
       };
     }
 
+    // Only add the entry if we're under the limit
+    await redis.zadd(redisKey, now, member);
+
     return {
       limited: false,
-      remaining: this.preset.maxRequests - count,
+      remaining: this.preset.maxRequests - count - 1,
     };
   }
 }

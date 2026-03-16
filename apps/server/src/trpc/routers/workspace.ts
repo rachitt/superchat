@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { eq, and } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc.js";
 import { workspaces, workspaceMembers, workspacePrompts } from "../../db/schema/index.js";
 import { invalidatePromptCache } from "../../services/prompt-manager.js";
@@ -83,7 +84,7 @@ export const workspaceRouter = router({
         .limit(1);
 
       if (!membership || !["owner", "admin"].includes(membership.role)) {
-        throw new Error("Only workspace owners and admins can update bot settings");
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only workspace owners and admins can update bot settings" });
       }
 
       const [result] = await ctx.db

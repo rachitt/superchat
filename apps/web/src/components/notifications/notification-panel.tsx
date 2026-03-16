@@ -39,6 +39,7 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
   const params = useParams<{ workspaceSlug: string }>();
   const setHighlightedMessage = useChatStore((s) => s.setHighlightedMessage);
   const storeNotifications = useNotificationStore((s) => s.notifications);
+  const storeMarkAsRead = useNotificationStore((s) => s.markAsRead);
   const storeMarkAllRead = useNotificationStore((s) => s.markAllRead);
 
   const { data } = useQuery({
@@ -78,6 +79,7 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
 
   const handleNotificationClick = (notification: NotificationData) => {
     if (!notification.readAt) {
+      storeMarkAsRead(notification.id);
       markReadMutation.mutate({ notificationId: notification.id });
     }
 

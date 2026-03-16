@@ -20,6 +20,7 @@ export interface MessageData {
   payload?: Record<string, unknown>;
   payloadVersion?: number;
   parentId?: string | null;
+  expiresAt?: string | null;
   createdAt: string;
 }
 
