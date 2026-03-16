@@ -3,6 +3,7 @@ import { Worker, type Job } from "bullmq";
 import { getQueue, closeAllQueues } from "./queue.js";
 import processGameTimeout from "./processors/game-timeout.js";
 import processMessageCleanup from "./processors/message-cleanup.js";
+import processLivingTick from "./processors/living-tick.js";
 import logger from "../lib/logger.js";
 import {
   bullmqJobsProcessedTotal,
@@ -44,6 +45,9 @@ const workers = [
   new Worker("message-cleanup", wrapProcessor("message-cleanup", processMessageCleanup), {
     connection: { ...connectionOpts },
   }),
+  new Worker("living-tick", wrapProcessor("living-tick", processLivingTick), {
+    connection: { ...connectionOpts },
+  }),
 ];
 
 // Set up repeatable message-cleanup job (every 5 minutes)
@@ -55,6 +59,14 @@ async function setupRepeatableJobs() {
     { name: "cleanup" }
   );
   log.info("Repeatable message-cleanup job scheduled (every 5min)");
+
+  const livingTickQueue = getQueue("living-tick");
+  await livingTickQueue.upsertJobScheduler(
+    "living-tick-scheduler",
+    { every: 10_000 },
+    { name: "tick" }
+  );
+  log.info("Repeatable living-tick job scheduled (every 10s)");
 }
 
 async function shutdown() {

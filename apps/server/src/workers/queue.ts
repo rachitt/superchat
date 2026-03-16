@@ -9,6 +9,7 @@ const QUEUE_NAMES = [
   "notifications",
   "game-timeouts",
   "message-cleanup",
+  "living-tick",
 ] as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[number];
