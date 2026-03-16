@@ -1,11 +1,12 @@
 import type { Server, Socket } from "socket.io";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 import type { ClientToServerEvents, ServerToClientEvents } from "@superchat/shared";
 import { sendMessageSchema } from "@superchat/shared";
 import { db } from "../../db/index.js";
 import { messages, user as users, reactions } from "../../db/schema/index.js";
 import { autoModerate } from "../../services/moderation.js";
 import { handleSocketError } from "../../lib/errors.js";
+import { createNotification } from "../../services/notifications.js";
 
 type IOServer = Server<ClientToServerEvents, ServerToClientEvents>;
 type IOSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -37,6 +38,7 @@ export function registerMessageHandlers(io: IOServer, socket: IOSocket) {
           content: parsed.data.content,
           payload: parsed.data.payload,
           parentId: parsed.data.parentId,
+          expiresAt: parsed.data.expiresAt ? new Date(parsed.data.expiresAt) : undefined,
         })
         .returning();
 
@@ -59,10 +61,63 @@ export function registerMessageHandlers(io: IOServer, socket: IOSocket) {
         payload: message.payload as Record<string, unknown> | undefined,
         payloadVersion: message.payloadVersion,
         parentId: message.parentId,
+        expiresAt: message.expiresAt?.toISOString() ?? null,
         createdAt: message.createdAt.toISOString(),
       };
 
       io.to(`channel:${message.channelId}`).emit("message:new", messageData);
+
+      // Parse @mentions and create notifications
+      const mentionRegex = /@(\w+)/g;
+      let match: RegExpExecArray | null;
+      const mentionedUsernames = new Set<string>();
+      while ((match = mentionRegex.exec(parsed.data.content)) !== null) {
+        mentionedUsernames.add(match[1]);
+      }
+
+      if (mentionedUsernames.size > 0) {
+        const mentionedUsers = await db
+          .select({ id: users.id, username: users.username })
+          .from(users)
+          .where(
+            or(
+              ...Array.from(mentionedUsernames).map((u) => eq(users.username, u))
+            )
+          );
+
+        const authorName = author?.name ?? author?.username ?? "Someone";
+        for (const mentioned of mentionedUsers) {
+          if (mentioned.id !== userId) {
+            createNotification({
+              userId: mentioned.id,
+              type: "mention",
+              title: `${authorName} mentioned you`,
+              body: parsed.data.content.slice(0, 200),
+              data: { channelId: message.channelId, messageId: message.id },
+            }).catch(() => {});
+          }
+        }
+      }
+
+      // Notify parent message author on replies
+      if (parsed.data.parentId) {
+        const [parent] = await db
+          .select({ authorId: messages.authorId })
+          .from(messages)
+          .where(eq(messages.id, parsed.data.parentId))
+          .limit(1);
+
+        if (parent && parent.authorId !== userId) {
+          const authorName = author?.name ?? author?.username ?? "Someone";
+          createNotification({
+            userId: parent.authorId,
+            type: "reply",
+            title: `${authorName} replied to your message`,
+            body: parsed.data.content.slice(0, 200),
+            data: { channelId: message.channelId, messageId: message.id, parentId: parsed.data.parentId },
+          }).catch(() => {});
+        }
+      }
     } catch (err) {
       handleSocketError(socket, err);
     }

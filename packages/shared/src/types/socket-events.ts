@@ -20,6 +20,7 @@ export interface MessageData {
   payload?: Record<string, unknown>;
   payloadVersion?: number;
   parentId?: string | null;
+  expiresAt?: string | null;
   createdAt: string;
 }
 
@@ -72,6 +73,7 @@ export interface ClientToServerEvents {
     type?: MessageType;
     payload?: Record<string, unknown>;
     parentId?: string | null;
+    expiresAt?: string;
   }) => void;
   "message:edit": (data: { messageId: string; content: string }) => void;
   "message:delete": (data: { messageId: string }) => void;
@@ -111,5 +113,6 @@ export interface ServerToClientEvents {
   "game:state_update": (data: GameStateUpdate) => void;
   "game:finished": (data: GameFinishedEvent) => void;
   "game:error": (data: { gameId: string; message: string }) => void;
+  "notification:new": (data: { id: string; type: string; title: string; body: string; data?: Record<string, unknown>; createdAt: string }) => void;
   "error": (data: { message: string; code?: string }) => void;
 }

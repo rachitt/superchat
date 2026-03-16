@@ -3,11 +3,13 @@
 import { useEffect, useRef } from "react";
 import { getSocket } from "@/lib/socket";
 import { useChatStore } from "@/stores/chat-store";
+import { usePresenceStore } from "@/stores/presence-store";
 
 export function useSocket() {
   const initialized = useRef(false);
   const { addMessage, updateMessage, removeMessage, setTyping, toggleReaction } =
     useChatStore();
+  const setPresence = usePresenceStore((s) => s.setPresence);
 
   useEffect(() => {
     if (initialized.current) return;
@@ -35,13 +37,18 @@ export function useSocket() {
       toggleReaction(messageId, userId, emoji, action);
     });
 
+    socket.on("presence:changed", ({ userId, status }) => {
+      setPresence(userId, status);
+    });
+
     return () => {
       socket.off("message:new");
       socket.off("message:updated");
       socket.off("message:deleted");
       socket.off("typing:update");
       socket.off("message:reaction");
+      socket.off("presence:changed");
       initialized.current = false;
     };
-  }, [addMessage, updateMessage, removeMessage, setTyping, toggleReaction]);
+  }, [addMessage, updateMessage, removeMessage, setTyping, toggleReaction, setPresence]);
 }

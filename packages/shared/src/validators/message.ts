@@ -7,6 +7,7 @@ export const sendMessageSchema = z.object({
   type: z.enum(MESSAGE_TYPES).default("text"),
   payload: z.record(z.unknown()).optional(),
   parentId: z.string().uuid().nullable().optional(),
+  expiresAt: z.string().datetime().optional(),
 });
 
 export const editMessageSchema = z.object({
