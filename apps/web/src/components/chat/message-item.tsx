@@ -20,12 +20,13 @@ interface MessageItemProps {
     };
   };
   showThread?: boolean;
+  highlighted?: boolean;
 }
 
 const EMPTY_REACTIONS: never[] = [];
 const QUICK_EMOJIS = ["👍", "❤️", "😂", "🎉", "😮", "🔥"];
 
-export function MessageItem({ message, showThread = true }: MessageItemProps) {
+export function MessageItem({ message, showThread = true, highlighted = false }: MessageItemProps) {
   const { data: session } = useSession();
   const setActiveThread = useChatStore((s) => s.setActiveThread);
   const reactions = useChatStore((s) => s.reactions.get(message.id)) ?? EMPTY_REACTIONS;
@@ -88,7 +89,24 @@ export function MessageItem({ message, showThread = true }: MessageItemProps) {
   };
 
   return (
-    <div className="group relative flex gap-3 px-4 py-1.5 hover:bg-zinc-800/50">
+    <div
+      data-message-id={message.id}
+      className={`group relative flex gap-3 px-4 py-2 hover:bg-zinc-800/50 ${highlighted ? "search-highlight" : ""}`}
+    >
+      {highlighted && (
+        <style>{`
+          @keyframes highlight-pulse {
+            0% { background-color: rgba(99,102,241,0.35); box-shadow: 0 0 0 1px rgba(99,102,241,0.5), 0 0 20px rgba(99,102,241,0.15); }
+            50% { background-color: rgba(99,102,241,0.2); box-shadow: 0 0 0 1px rgba(99,102,241,0.3), 0 0 10px rgba(99,102,241,0.1); }
+            100% { background-color: transparent; box-shadow: none; }
+          }
+          .search-highlight {
+            animation: highlight-pulse 2.5s ease-out forwards;
+            border-radius: 8px;
+            border-left: 3px solid #6366f1;
+          }
+        `}</style>
+      )}
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-medium text-white">
         {message.author?.image ? (
           <img

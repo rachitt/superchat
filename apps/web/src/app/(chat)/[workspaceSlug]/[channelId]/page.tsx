@@ -13,6 +13,7 @@ import { MessageInput } from "@/components/chat/message-input";
 import { ThreadPanel } from "@/components/chat/thread-panel";
 import { SummaryDialog } from "@/components/ai/summary-dialog";
 import { GamePanel } from "@/components/games/game-panel";
+import { SearchDialog, useSearchShortcut } from "@/components/chat/search-dialog";
 
 export default function ChannelPage() {
   const params = useParams<{ workspaceSlug: string; channelId: string }>();
@@ -23,6 +24,9 @@ export default function ChannelPage() {
   const { setSummarizing, setSummary } = useAiStore();
   const [showSummary, setShowSummary] = useState(false);
   const [showGames, setShowGames] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const openSearch = useCallback(() => setShowSearch(true), []);
+  useSearchShortcut(openSearch);
 
   // Set up AI socket listeners
   useAiSocket();
@@ -92,6 +96,16 @@ export default function ChannelPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setShowSearch(true)}
+              className="flex items-center gap-1.5 rounded-md border border-zinc-700 px-2.5 py-1 text-xs text-zinc-400 hover:border-zinc-600 hover:text-zinc-300"
+              title="Search (Cmd+K)"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              Search
+            </button>
+            <button
               onClick={handleSummarize}
               className="rounded-md bg-zinc-800 px-3 py-1 text-xs text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-200"
               title="Summarize channel with AI"
@@ -121,6 +135,13 @@ export default function ChannelPage() {
           channelId={channelId}
           workspaceId={workspace.id}
           onClose={() => setShowGames(false)}
+        />
+      )}
+      {workspace && (
+        <SearchDialog
+          workspaceId={workspace.id}
+          open={showSearch}
+          onClose={() => setShowSearch(false)}
         />
       )}
     </div>

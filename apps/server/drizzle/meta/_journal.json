@@ -15,6 +15,13 @@
       "when": 1773624140022,
       "tag": "0001_absurd_shriek",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1773629305426,
+      "tag": "0002_light_silver_samurai",
+      "breakpoints": true
     }
   ]
 }

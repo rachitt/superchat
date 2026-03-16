@@ -19,11 +19,13 @@ interface ChatState {
   messages: Map<string, MessageWithAuthor[]>;
   activeChannelId: string | null;
   activeThreadId: string | null;
+  highlightedMessageId: string | null;
   typingUsers: Map<string, Map<string, string>>; // channelId -> Map<userId, username>
   reactions: Map<string, Reaction[]>; // messageId -> reactions
 
   setActiveChannel: (channelId: string) => void;
   setActiveThread: (messageId: string | null) => void;
+  setHighlightedMessage: (messageId: string | null) => void;
   addMessage: (channelId: string, message: MessageWithAuthor) => void;
   setMessages: (channelId: string, messages: MessageWithAuthor[]) => void;
   prependMessages: (channelId: string, messages: MessageWithAuthor[]) => void;
@@ -37,11 +39,13 @@ export const useChatStore = create<ChatState>((set) => ({
   messages: new Map(),
   activeChannelId: null,
   activeThreadId: null,
+  highlightedMessageId: null,
   typingUsers: new Map(),
   reactions: new Map(),
 
   setActiveChannel: (channelId) => set({ activeChannelId: channelId }),
   setActiveThread: (messageId) => set({ activeThreadId: messageId }),
+  setHighlightedMessage: (messageId) => set({ highlightedMessageId: messageId }),
 
   addMessage: (channelId, message) =>
     set((state) => {

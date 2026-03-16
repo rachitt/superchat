@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "@/stores/chat-store";
 import { MessageItem } from "./message-item";
 import { AiMessage } from "../ai/ai-message";
@@ -14,14 +14,40 @@ interface MessageListProps {
 export function MessageList({ channelId }: MessageListProps) {
   const messages = useChatStore((s) => s.messages.get(channelId)) ?? EMPTY;
   const typingUsers = useChatStore((s) => s.typingUsers.get(channelId));
+  const highlightedMessageId = useChatStore((s) => s.highlightedMessageId);
+  const setHighlightedMessage = useChatStore((s) => s.setHighlightedMessage);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [localHighlight, setLocalHighlight] = useState<string | null>(null);
 
-  // Only show top-level messages (not thread replies)
   const topLevelMessages = messages.filter((m) => !m.parentId);
 
+  // Scroll to bottom on new messages
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [topLevelMessages.length]);
+    if (!localHighlight) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [topLevelMessages.length, localHighlight]);
+
+  // Pick up highlight from store, manage locally
+  useEffect(() => {
+    if (!highlightedMessageId) return;
+
+    // Transfer to local state and clear store immediately
+    setLocalHighlight(highlightedMessageId);
+    setHighlightedMessage(null);
+
+    // Scroll after a brief delay
+    setTimeout(() => {
+      const el = document.querySelector(`[data-message-id="${highlightedMessageId}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 150);
+
+    // Clear local highlight after 3s
+    const timer = setTimeout(() => setLocalHighlight(null), 3000);
+    return () => clearTimeout(timer);
+  }, [highlightedMessageId, setHighlightedMessage]);
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
@@ -34,7 +60,11 @@ export function MessageList({ channelId }: MessageListProps) {
               persistedContent={msg.content}
             />
           ) : (
-            <MessageItem key={msg.id} message={msg} />
+            <MessageItem
+              key={msg.id}
+              message={msg}
+              highlighted={msg.id === localHighlight}
+            />
           )
         )}
         <div ref={bottomRef} />

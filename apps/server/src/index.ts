@@ -59,6 +59,9 @@ async function main() {
     trpcOptions: {
       router: appRouter,
       createContext: createContext(db, auth),
+      onError: ({ path, error }) => {
+        console.error(`tRPC error on ${path}:`, error.message, error.cause ?? "");
+      },
     } satisfies FastifyTRPCPluginOptions<AppRouter>["trpcOptions"],
   });
 
