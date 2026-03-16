@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTRPC } from "@/lib/trpc";
 import { useChatStore } from "@/stores/chat-store";
 import { getSocket } from "@/lib/socket";
@@ -15,15 +15,26 @@ interface ThreadPanelProps {
 
 export function ThreadPanel({ parentId, channelId }: ThreadPanelProps) {
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const setActiveThread = useChatStore((s) => s.setActiveThread);
   const parentMessage = useChatStore((s) =>
     (s.messages.get(channelId) ?? []).find((m) => m.id === parentId)
   );
   const [content, setContent] = useState("");
 
-  const { data: replies } = useQuery(
-    trpc.message.getThread.queryOptions({ parentId })
-  );
+  const threadQueryOptions = trpc.message.getThread.queryOptions({ parentId });
+  const { data: replies } = useQuery(threadQueryOptions);
+
+  // Refetch thread replies when a new message arrives for this thread
+  const channelMessages = useChatStore((s) => s.messages.get(channelId));
+  const threadReplyCount = channelMessages?.filter((m) => m.parentId === parentId).length ?? 0;
+  const prevReplyCount = useRef(threadReplyCount);
+  useEffect(() => {
+    if (threadReplyCount > prevReplyCount.current) {
+      queryClient.invalidateQueries({ queryKey: threadQueryOptions.queryKey });
+    }
+    prevReplyCount.current = threadReplyCount;
+  }, [threadReplyCount, queryClient, threadQueryOptions.queryKey]);
 
   const handleSend = useCallback(() => {
     const trimmed = content.trim();

@@ -1,15 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNotificationStore } from "@/stores/notification-store";
 import { NotificationPanel } from "./notification-panel";
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const unreadCount = useNotificationStore((s) => s.unreadCount);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <button
         onClick={() => setOpen(!open)}
         className="relative rounded-md p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
