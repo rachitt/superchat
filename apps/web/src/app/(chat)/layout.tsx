@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/auth-client";
 import { connectSocket, disconnectSocket } from "@/lib/socket";
 import { useSocket } from "@/hooks/use-socket";
+import { Loader2 } from "lucide-react";
 
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
   const { data: session, isPending } = useSession();
@@ -28,7 +29,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   if (isPending) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="text-zinc-400">Loading...</div>
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }

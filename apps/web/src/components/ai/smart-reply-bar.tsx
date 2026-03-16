@@ -2,6 +2,8 @@
 
 import { useAiStore } from "@/stores/ai-store";
 import { getSocket } from "@/lib/socket";
+import { Sparkles, X } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface SmartReplyBarProps {
   channelId: string;
@@ -15,24 +17,17 @@ export function SmartReplyBar({ channelId, messageId, isLoading }: SmartReplyBar
 
   const handleReply = (reply: string) => {
     const socket = getSocket();
-    socket.emit("message:send", {
-      channelId,
-      content: reply,
-    });
+    socket.emit("message:send", { channelId, content: reply });
     clearSmartReplies(messageId);
   };
 
-  // Loading skeleton
   if (isLoading) {
     return (
-      <div className="mb-2 flex gap-2">
-        <span className="self-center text-xs text-zinc-500">Quick replies:</span>
-        {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="h-6 w-20 animate-pulse rounded-full bg-zinc-800"
-          />
-        ))}
+      <div className="mb-2 flex items-center gap-2 animate-slide-up">
+        <Sparkles className="h-3 w-3 text-muted-foreground" />
+        <Skeleton className="h-6 w-20 rounded-full" />
+        <Skeleton className="h-6 w-24 rounded-full" />
+        <Skeleton className="h-6 w-16 rounded-full" />
       </div>
     );
   }
@@ -40,22 +35,22 @@ export function SmartReplyBar({ channelId, messageId, isLoading }: SmartReplyBar
   if (!replies || replies.length === 0) return null;
 
   return (
-    <div className="mb-2 flex flex-wrap gap-2">
-      <span className="self-center text-xs text-zinc-500">Quick replies:</span>
+    <div className="mb-2 flex flex-wrap items-center gap-1.5 animate-slide-up">
+      <Sparkles className="h-3 w-3 text-violet-400" />
       {replies.map((reply, i) => (
         <button
           key={i}
           onClick={() => handleReply(reply)}
-          className="rounded-full border border-zinc-700 bg-zinc-800/50 px-3 py-1 text-xs text-zinc-300 transition-colors hover:border-indigo-500/50 hover:bg-indigo-500/10 hover:text-indigo-300"
+          className="rounded-full border border-border bg-card px-3 py-1 text-xs text-secondary-foreground transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
         >
           {reply}
         </button>
       ))}
       <button
         onClick={() => clearSmartReplies(messageId)}
-        className="self-center text-xs text-zinc-600 hover:text-zinc-400"
+        className="rounded-full p-1 text-muted-foreground/50 transition-colors hover:text-muted-foreground"
       >
-        Dismiss
+        <X className="h-3 w-3" />
       </button>
     </div>
   );

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { getSocket } from "@/lib/socket";
 import { useSession } from "@/lib/auth-client";
+import { BarChart3, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface PollOption {
   id: number;
@@ -26,7 +28,6 @@ export function PollWidget({ messageId, payload }: PollWidgetProps) {
   const [voting, setVoting] = useState(false);
 
   const totalVotes = payload.options.reduce((sum, o) => sum + o.votes.length, 0);
-  const userVotedOption = payload.options.find((o) => userId && o.votes.includes(userId));
 
   const handleVote = (optionId: number) => {
     if (voting || !userId) return;
@@ -41,8 +42,11 @@ export function PollWidget({ messageId, payload }: PollWidgetProps) {
   };
 
   return (
-    <div className="my-1 max-w-md rounded-lg border border-zinc-700 bg-zinc-800/80 p-3">
-      <p className="mb-2 text-sm font-semibold text-zinc-100">{payload.question}</p>
+    <div className="my-2 max-w-md rounded-xl border border-border bg-card p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <BarChart3 className="h-4 w-4 text-primary" />
+        <p className="text-sm font-semibold text-foreground">{payload.question}</p>
+      </div>
       <div className="flex flex-col gap-1.5">
         {payload.options.map((option) => {
           const pct = totalVotes > 0 ? Math.round((option.votes.length / totalVotes) * 100) : 0;
@@ -53,26 +57,30 @@ export function PollWidget({ messageId, payload }: PollWidgetProps) {
               key={option.id}
               onClick={() => handleVote(option.id)}
               disabled={voting}
-              className={`relative overflow-hidden rounded-md border px-3 py-1.5 text-left text-sm transition-colors ${
+              className={cn(
+                "relative overflow-hidden rounded-lg border px-3 py-2 text-left text-sm transition-all",
                 isVoted
-                  ? "border-indigo-500/50 bg-indigo-500/10 text-indigo-300"
-                  : "border-zinc-600 bg-zinc-700/50 text-zinc-300 hover:border-zinc-500"
-              }`}
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border bg-background/50 text-secondary-foreground hover:border-border/80 hover:bg-accent/50"
+              )}
             >
-              {/* Progress bar background */}
               {totalVotes > 0 && (
                 <div
-                  className={`absolute inset-y-0 left-0 transition-all ${
-                    isVoted ? "bg-indigo-500/15" : "bg-zinc-600/30"
-                  }`}
+                  className={cn(
+                    "absolute inset-y-0 left-0 transition-all duration-500",
+                    isVoted ? "bg-primary/10" : "bg-muted/50"
+                  )}
                   style={{ width: `${pct}%` }}
                 />
               )}
               <span className="relative flex items-center justify-between">
-                <span>{option.text}</span>
+                <span className="flex items-center gap-1.5">
+                  {isVoted && <Check className="h-3 w-3" />}
+                  {option.text}
+                </span>
                 {totalVotes > 0 && (
-                  <span className="ml-2 text-xs text-zinc-500">
-                    {pct}% ({option.votes.length})
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {pct}%
                   </span>
                 )}
               </span>
@@ -80,7 +88,9 @@ export function PollWidget({ messageId, payload }: PollWidgetProps) {
           );
         })}
       </div>
-      <p className="mt-2 text-xs text-zinc-500">{totalVotes} vote{totalVotes !== 1 ? "s" : ""}</p>
+      <p className="mt-2.5 text-[11px] text-muted-foreground">
+        {totalVotes} vote{totalVotes !== 1 ? "s" : ""}
+      </p>
     </div>
   );
 }

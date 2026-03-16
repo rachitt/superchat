@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTRPC } from "@/lib/trpc";
+import { Hash, Lock, X, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface CreateChannelDialogProps {
   workspaceId: string;
@@ -28,9 +30,20 @@ export function CreateChannelDialog({ workspaceId, onClose }: CreateChannelDialo
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-full max-w-sm rounded-lg border border-zinc-800 bg-zinc-900 p-6">
-        <h3 className="text-lg font-semibold text-zinc-100">Create Channel</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="w-full max-w-sm rounded-xl border border-border bg-popover p-6 shadow-2xl animate-float-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-lg font-semibold text-foreground">Create Channel</h3>
+          <button
+            onClick={onClose}
+            className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
         <form
           onSubmit={(e) => {
@@ -42,62 +55,69 @@ export function CreateChannelDialog({ workspaceId, onClose }: CreateChannelDialo
               type,
             });
           }}
-          className="mt-4 space-y-3"
+          className="space-y-4"
         >
           <div>
-            <label className="block text-sm font-medium text-zinc-300">Name</label>
+            <label className="block text-sm font-medium text-foreground">Name</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="general"
               required
-              className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:border-indigo-500"
+              className="mt-1.5 w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder-muted-foreground/60 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-zinc-300">Description</label>
+            <label className="block text-sm font-medium text-foreground">Description</label>
             <input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What's this channel about?"
-              className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:border-indigo-500"
+              className="mt-1.5 w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder-muted-foreground/60 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
             />
           </div>
 
-          <div className="flex gap-3">
-            <label className="flex items-center gap-2 text-sm text-zinc-300">
-              <input
-                type="radio"
-                checked={type === "public"}
-                onChange={() => setType("public")}
-                className="accent-indigo-500"
-              />
-              Public
-            </label>
-            <label className="flex items-center gap-2 text-sm text-zinc-300">
-              <input
-                type="radio"
-                checked={type === "private"}
-                onChange={() => setType("private")}
-                className="accent-indigo-500"
-              />
-              Private
-            </label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setType("public")}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-medium transition-all",
+                type === "public"
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:bg-accent"
+              )}
+            >
+              <Hash className="h-3.5 w-3.5" /> Public
+            </button>
+            <button
+              type="button"
+              onClick={() => setType("private")}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-medium transition-all",
+                type === "private"
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:bg-accent"
+              )}
+            >
+              <Lock className="h-3.5 w-3.5" /> Private
+            </button>
           </div>
 
-          <div className="flex gap-2 pt-2">
+          <div className="flex gap-2 pt-1">
             <button
               type="submit"
               disabled={createChannel.isPending}
-              className="flex-1 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-all hover:opacity-90 disabled:opacity-50"
             >
-              Create
+              {createChannel.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {createChannel.isPending ? "Creating..." : "Create"}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md border border-zinc-700 px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200"
+              className="rounded-lg border border-border px-4 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               Cancel
             </button>

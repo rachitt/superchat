@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTRPC } from "@/lib/trpc";
 import { useChatStore } from "@/stores/chat-store";
 import { getSocket } from "@/lib/socket";
 import { MessageItem } from "./message-item";
 import { MAX_MESSAGE_LENGTH } from "@superchat/shared";
+import { X, MessageSquare, SendHorizontal } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 interface ThreadPanelProps {
   parentId: string;
@@ -29,34 +31,43 @@ export function ThreadPanel({ parentId, channelId }: ThreadPanelProps) {
     const trimmed = content.trim();
     if (!trimmed) return;
     const socket = getSocket();
-    socket.emit("message:send", {
-      channelId,
-      content: trimmed,
-      parentId,
-    });
+    socket.emit("message:send", { channelId, content: trimmed, parentId });
     setContent("");
   }, [content, channelId, parentId]);
 
+  const replyCount = replies?.length ?? 0;
+
   return (
-    <div className="flex w-80 flex-col border-l border-zinc-800">
-      <div className="flex h-12 items-center justify-between border-b border-zinc-800 px-4">
-        <h3 className="text-sm font-semibold text-zinc-100">Thread</h3>
+    <div className="flex w-80 flex-col border-l border-border bg-card animate-slide-in-right">
+      {/* Header */}
+      <div className="flex h-13 items-center justify-between border-b border-border px-4">
+        <div className="flex items-center gap-2">
+          <MessageSquare className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold text-foreground">Thread</h3>
+          {replyCount > 0 && (
+            <span className="text-xs text-muted-foreground">
+              {replyCount} {replyCount === 1 ? "reply" : "replies"}
+            </span>
+          )}
+        </div>
         <button
           onClick={() => setActiveThread(null)}
-          className="text-zinc-400 hover:text-zinc-200"
+          className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
-          ✕
+          <X className="h-4 w-4" />
         </button>
       </div>
 
+      {/* Thread content */}
       <div className="flex-1 overflow-y-auto">
         {parentMessage && (
-          <div className="border-b border-zinc-800 pb-2">
+          <div className="pb-1">
             <MessageItem message={parentMessage} showThread={false} />
+            <Separator className="mx-5" />
           </div>
         )}
 
-        <div className="flex flex-col gap-0.5 py-2">
+        <div className="flex flex-col py-1">
           {replies?.map((item) => (
             <MessageItem
               key={item.message.id}
@@ -73,11 +84,18 @@ export function ThreadPanel({ parentId, channelId }: ThreadPanelProps) {
               showThread={false}
             />
           ))}
+
+          {replyCount === 0 && (
+            <p className="px-5 py-8 text-center text-sm text-muted-foreground">
+              No replies yet. Start the conversation.
+            </p>
+          )}
         </div>
       </div>
 
-      <div className="border-t border-zinc-800 p-3">
-        <div className="flex items-end gap-2 rounded-lg bg-zinc-800 p-2">
+      {/* Thread reply input */}
+      <div className="border-t border-border p-3">
+        <div className="flex items-end gap-2 rounded-lg border border-border bg-background p-2 transition-colors focus-within:border-primary/40">
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
@@ -90,14 +108,14 @@ export function ThreadPanel({ parentId, channelId }: ThreadPanelProps) {
             placeholder="Reply..."
             maxLength={MAX_MESSAGE_LENGTH}
             rows={1}
-            className="flex-1 resize-none bg-transparent px-2 py-1 text-sm text-zinc-100 placeholder-zinc-500 outline-none"
+            className="flex-1 resize-none bg-transparent px-2 py-1 text-sm text-foreground placeholder-muted-foreground/60 outline-none"
           />
           <button
             onClick={handleSend}
             disabled={!content.trim()}
-            className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Reply
+            <SendHorizontal className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
