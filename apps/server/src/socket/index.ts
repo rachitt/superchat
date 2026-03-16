@@ -1,7 +1,9 @@
+import { randomUUID } from "node:crypto";
 import type { Server } from "socket.io";
 import type { ClientToServerEvents, ServerToClientEvents } from "@superchat/shared";
 import type { auth as Auth } from "../lib/auth.js";
 import { createChildLogger } from "../lib/logger.js";
+import { websocketConnectionsActive, websocketEventsTotal } from "../lib/metrics.js";
 import { registerMessageHandlers } from "./handlers/message.js";
 import { registerPresenceHandlers } from "./handlers/presence.js";
 import { registerAiHandlers } from "./handlers/ai.js";
@@ -55,12 +57,28 @@ export function setupSocketHandlers(io: IOServer, auth: typeof Auth) {
 
   io.on("connection", (socket) => {
     const userId = socket.data.userId as string;
-    log.info({ userId, username: socket.data.username }, "Connected");
+    const connectionId = randomUUID();
+    socket.data.connectionId = connectionId;
+
+    const connLog = log.child({ connectionId, userId });
+    connLog.info({ username: socket.data.username }, "Connected");
     socket.join(`user:${userId}`);
+
+    websocketConnectionsActive.inc();
+
+    // Track events
+    socket.onAny((eventName: string) => {
+      websocketEventsTotal.inc({ event_name: eventName });
+    });
 
     registerMessageHandlers(io, socket);
     registerPresenceHandlers(io, socket);
     registerAiHandlers(io, socket);
     registerGameHandlers(io, socket);
+
+    socket.on("disconnect", () => {
+      websocketConnectionsActive.dec();
+      connLog.info("Disconnected");
+    });
   });
 }

@@ -8,6 +8,7 @@ import { messages, user as users } from "../../db/schema/index.js";
 import { checkAiRateLimit } from "../../lib/rate-limit.js";
 import { AppError, ErrorCode } from "../../lib/errors.js";
 import { createChildLogger } from "../../lib/logger.js";
+import { aiRequestsTotal, aiRequestDuration } from "../../lib/metrics.js";
 
 const log = createChildLogger({ module: "ai" });
 
@@ -31,6 +32,8 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
       });
       return;
     }
+
+    const aiStart = Date.now();
 
     // Get user info for context
     const [author] = await db
@@ -103,6 +106,9 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
           messageId,
           error: timeoutMsg,
         });
+
+        aiRequestsTotal.inc({ status: "timeout" });
+        aiRequestDuration.observe({}, (Date.now() - aiStart) / 1000);
         return;
       }
 
@@ -117,6 +123,9 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
         messageId,
         content: fullContent,
       });
+
+      aiRequestsTotal.inc({ status: "success" });
+      aiRequestDuration.observe({}, (Date.now() - aiStart) / 1000);
     } catch (err) {
       clearTimeout(timeout);
       log.error({ err, channelId, messageId }, "AI stream failed");
@@ -132,6 +141,9 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
         messageId,
         error: errorMessage,
       });
+
+      aiRequestsTotal.inc({ status: "error" });
+      aiRequestDuration.observe({}, (Date.now() - aiStart) / 1000);
     } finally {
       activeStreams.delete(messageId);
     }

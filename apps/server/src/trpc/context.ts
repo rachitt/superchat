@@ -6,6 +6,7 @@ export interface TRPCContext {
   req: FastifyRequest;
   res: FastifyReply;
   db: Database;
+  requestId: string;
   userId: string | null;
   user: { id: string; email: string; name: string; username?: string | null } | null;
 }
@@ -23,6 +24,7 @@ export function createContext(db: Database, auth: typeof Auth) {
       req,
       res,
       db,
+      requestId: req.id,
       userId: session?.user?.id ?? null,
       user: session?.user ?? null,
     };

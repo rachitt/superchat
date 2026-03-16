@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { randomUUID } from "node:crypto";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import {
@@ -17,9 +18,21 @@ import { setupSocketHandlers } from "./socket/index.js";
 import { closeAllQueues } from "./workers/queue.js";
 import logger from "./lib/logger.js";
 import { AppError } from "./lib/errors.js";
+import { getHealthStatus } from "./services/health.js";
+import {
+  httpRequestsTotal,
+  httpRequestDuration,
+  getMetrics,
+} from "./lib/metrics.js";
 
 const PORT = parseInt(process.env.PORT || "4000", 10);
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+const HEALTH_CHECK_SECRET = process.env.HEALTH_CHECK_SECRET;
+
+function parseOrigins(raw: string): string | string[] {
+  const origins = raw.split(",").map((o) => o.trim()).filter(Boolean);
+  return origins.length === 1 ? origins[0] : origins;
+}
 
 async function main() {
   const fastify = Fastify({
@@ -32,11 +45,44 @@ async function main() {
         },
       }),
     },
+    genReqId: (req) => (req.headers["x-request-id"] as string) || randomUUID(),
+  });
+
+  // ── Request tracing ──
+  fastify.addHook("onRequest", async (request) => {
+    request.headers["x-request-id"] = request.id;
+  });
+
+  // ── HTTP metrics ──
+  fastify.addHook("onResponse", async (request, reply) => {
+    const duration = reply.elapsedTime / 1000; // ms → seconds
+    const labels = {
+      method: request.method,
+      path: request.routeOptions?.url || request.url,
+      status_code: String(reply.statusCode),
+    };
+    httpRequestsTotal.inc(labels);
+    httpRequestDuration.observe(
+      { method: request.method, path: request.routeOptions?.url || request.url },
+      duration
+    );
+  });
+
+  // ── Security headers ──
+  fastify.addHook("onSend", async (_request, reply) => {
+    reply.header("X-Content-Type-Options", "nosniff");
+    reply.header("X-Frame-Options", "DENY");
+    reply.header("X-XSS-Protection", "0");
+    reply.header("Referrer-Policy", "strict-origin-when-cross-origin");
+    if (process.env.NODE_ENV === "production") {
+      reply.header("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+    }
   });
 
   // ── CORS ──
+  const allowedOrigins = parseOrigins(FRONTEND_URL);
   await fastify.register(cors, {
-    origin: FRONTEND_URL,
+    origin: allowedOrigins,
     credentials: true,
   });
 
@@ -80,7 +126,7 @@ async function main() {
 
   // ── Socket.IO ──
   const ioOptions: Record<string, unknown> = {
-    cors: { origin: FRONTEND_URL, credentials: true },
+    cors: { origin: allowedOrigins, credentials: true },
   };
 
   // Only use Redis adapter if Redis is available
@@ -110,8 +156,28 @@ async function main() {
     }
   });
 
-  // ── Health check ──
+  // ── Health check (simple, for load balancers) ──
   fastify.get("/health", async () => ({ status: "ok" }));
+
+  // ── Health check (detailed, optionally protected) ──
+  fastify.get("/health/detailed", async (request, reply) => {
+    if (HEALTH_CHECK_SECRET) {
+      const secret = (request.query as Record<string, string>).secret;
+      if (secret !== HEALTH_CHECK_SECRET) {
+        reply.status(403).send({ error: "Forbidden" });
+        return;
+      }
+    }
+    const health = await getHealthStatus();
+    const statusCode = health.status === "unhealthy" ? 503 : 200;
+    reply.status(statusCode).send(health);
+  });
+
+  // ── Prometheus metrics ──
+  fastify.get("/metrics", async (_request, reply) => {
+    reply.header("Content-Type", "text/plain; version=0.0.4");
+    return getMetrics();
+  });
 
   // ── Graceful shutdown ──
   async function shutdown() {

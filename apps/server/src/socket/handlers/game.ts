@@ -5,7 +5,7 @@ import { gameActionSchema } from "@superchat/shared";
 import { db } from "../../db/index.js";
 import { games, gamePlayers, user as users } from "../../db/schema/index.js";
 import { getGameEngine } from "../../games/index.js";
-import { getQueue } from "../../workers/queue.js";
+import { enqueueJob } from "../../workers/queue.js";
 import { createChildLogger } from "../../lib/logger.js";
 
 const log = createChildLogger({ module: "game" });
@@ -198,9 +198,8 @@ export function registerGameHandlers(io: IOServer, socket: IOSocket) {
         // For in-progress games, check if it's their turn and auto-skip after a delay
         const currentState = game.state as GameState;
         if (currentState && "currentTurnUserId" in currentState && currentState.currentTurnUserId === userId) {
-          const timeoutQueue = getQueue("game-timeouts");
-          await timeoutQueue.add(
-            "game-timeout",
+          await enqueueJob(
+            "game-timeouts",
             { gameId, userId },
             { delay: 5000 }
           );

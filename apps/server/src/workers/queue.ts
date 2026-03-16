@@ -1,4 +1,5 @@
-import { Queue } from "bullmq";
+import { randomUUID } from "node:crypto";
+import { Queue, type JobsOptions } from "bullmq";
 
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 
@@ -20,6 +21,16 @@ export function getQueue(name: QueueName): Queue {
     queues.set(name, queue);
   }
   return queue;
+}
+
+export async function enqueueJob(
+  queueName: QueueName,
+  data: Record<string, unknown>,
+  opts?: JobsOptions & { traceId?: string }
+) {
+  const queue = getQueue(queueName);
+  const { traceId, ...jobOpts } = opts || {};
+  return queue.add(queueName, { ...data, traceId: traceId || randomUUID() }, jobOpts);
 }
 
 export async function closeAllQueues(): Promise<void> {
