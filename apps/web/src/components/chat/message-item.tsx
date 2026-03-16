@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { MessageData } from "@superchat/shared";
 import { getSocket } from "@/lib/socket";
 import { useChatStore } from "@/stores/chat-store";
 import { useAiStore } from "@/stores/ai-store";
+import { usePresenceStore } from "@/stores/presence-store";
 import { useSession } from "@/lib/auth-client";
 import { useTRPC } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
 import { SmartReplyBar } from "../ai/smart-reply-bar";
+import { OnlineIndicator } from "../ui/online-indicator";
 
 interface MessageItemProps {
   message: MessageData & {
@@ -18,6 +20,7 @@ interface MessageItemProps {
       name: string;
       image: string | null;
     };
+    expiresAt?: string | null;
   };
   showThread?: boolean;
   highlighted?: boolean;
@@ -26,17 +29,53 @@ interface MessageItemProps {
 const EMPTY_REACTIONS: never[] = [];
 const QUICK_EMOJIS = ["👍", "❤️", "😂", "🎉", "😮", "🔥"];
 
+function formatCountdown(expiresAt: string): { remaining: string; expired: boolean } {
+  const diff = new Date(expiresAt).getTime() - Date.now();
+  if (diff <= 0) return { remaining: "0s", expired: true };
+
+  const totalSeconds = Math.ceil(diff / 1000);
+  if (totalSeconds >= 3600) {
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    return { remaining: `${h}h ${m}m`, expired: false };
+  }
+  if (totalSeconds >= 60) {
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return { remaining: `${m}m ${s}s`, expired: false };
+  }
+  return { remaining: `${totalSeconds}s`, expired: false };
+}
+
+function useCountdown(expiresAt: string | null | undefined): { remaining: string | null; expired: boolean } {
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!expiresAt) return;
+    const interval = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, [expiresAt]);
+
+  // Use tick to force recalculation
+  void tick;
+
+  if (!expiresAt) return { remaining: null, expired: false };
+  return formatCountdown(expiresAt);
+}
+
 export function MessageItem({ message, showThread = true, highlighted = false }: MessageItemProps) {
   const { data: session } = useSession();
   const setActiveThread = useChatStore((s) => s.setActiveThread);
   const reactions = useChatStore((s) => s.reactions.get(message.id)) ?? EMPTY_REACTIONS;
   const smartReplies = useAiStore((s) => s.smartReplies.get(message.id));
   const setSmartReplies = useAiStore((s) => s.setSmartReplies);
+  const authorPresence = usePresenceStore((s) => s.users.get(message.authorId));
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [loadingReplies, setLoadingReplies] = useState(false);
   const [smartReplyError, setSmartReplyError] = useState(false);
+  const { remaining: expiryRemaining, expired } = useCountdown(message.expiresAt);
 
   const trpc = useTRPC();
   const smartReplyMutation = useMutation(
@@ -91,8 +130,19 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
   return (
     <div
       data-message-id={message.id}
-      className={`group relative flex gap-3 px-4 py-2 hover:bg-zinc-800/50 ${highlighted ? "search-highlight" : ""}`}
+      className={`group relative flex gap-3 px-4 py-2 hover:bg-zinc-800/50 ${highlighted ? "search-highlight" : ""} ${expired ? "message-expired" : ""}`}
     >
+      {expired && (
+        <style>{`
+          .message-expired {
+            animation: fade-out 1s ease-out forwards;
+          }
+          @keyframes fade-out {
+            from { opacity: 1; }
+            to { opacity: 0.2; }
+          }
+        `}</style>
+      )}
       {highlighted && (
         <style>{`
           @keyframes highlight-pulse {
@@ -107,15 +157,23 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
           }
         `}</style>
       )}
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-medium text-white">
-        {message.author?.image ? (
-          <img
-            src={message.author.image}
-            alt={displayName}
-            className="h-8 w-8 rounded-full object-cover"
+      <div className="relative shrink-0">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-xs font-medium text-white">
+          {message.author?.image ? (
+            <img
+              src={message.author.image}
+              alt={displayName}
+              className="h-8 w-8 rounded-full object-cover"
+            />
+          ) : (
+            initials
+          )}
+        </div>
+        {authorPresence && (
+          <OnlineIndicator
+            status={authorPresence.status}
+            className="absolute -bottom-0.5 -right-0.5"
           />
-        ) : (
-          initials
         )}
       </div>
 
@@ -126,6 +184,11 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
             <span className="text-xs text-zinc-500">@{message.author.username}</span>
           )}
           <span className="text-xs text-zinc-500">{time}</span>
+          {expiryRemaining && (
+            <span className="rounded bg-orange-500/20 px-1.5 py-0.5 text-[10px] font-medium text-orange-400">
+              {expiryRemaining}
+            </span>
+          )}
         </div>
 
         {isEditing ? (

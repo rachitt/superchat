@@ -36,6 +36,7 @@ export function registerMessageHandlers(io: IOServer, socket: IOSocket) {
         content: parsed.data.content,
         payload: parsed.data.payload,
         parentId: parsed.data.parentId,
+        expiresAt: parsed.data.expiresAt ? new Date(parsed.data.expiresAt) : undefined,
       })
       .returning();
 

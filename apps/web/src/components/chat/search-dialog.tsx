@@ -15,13 +15,14 @@ interface SearchDialogProps {
 export function SearchDialog({ workspaceId, open, onClose }: SearchDialogProps) {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [currentChannelOnly, setCurrentChannelOnly] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const params = useParams<{ workspaceSlug: string }>();
+  const params = useParams<{ workspaceSlug: string; channelId?: string }>();
   const router = useRouter();
   const trpc = useTRPC();
   const setHighlightedMessage = useChatStore((s) => s.setHighlightedMessage);
 
-  // Debounce search query
+  // Debounce search query (300ms)
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), 300);
     return () => clearTimeout(timer);
@@ -52,6 +53,7 @@ export function SearchDialog({ workspaceId, open, onClose }: SearchDialogProps) 
     ...trpc.search.search.queryOptions({
       query: debouncedQuery,
       workspaceId,
+      channelId: currentChannelOnly ? params.channelId : undefined,
     }),
     enabled: debouncedQuery.length > 0,
   });
@@ -66,6 +68,8 @@ export function SearchDialog({ workspaceId, open, onClose }: SearchDialogProps) 
   );
 
   if (!open) return null;
+
+  const resultCount = data?.results.length ?? 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]">
@@ -90,6 +94,26 @@ export function SearchDialog({ workspaceId, open, onClose }: SearchDialogProps) 
           <kbd className="hidden rounded border border-zinc-600 px-1.5 py-0.5 text-[10px] text-zinc-400 sm:inline">
             ESC
           </kbd>
+        </div>
+
+        {/* Filters */}
+        <div className="flex items-center gap-3 border-b border-zinc-700/50 px-4 py-2">
+          {params.channelId && (
+            <label className="flex items-center gap-1.5 text-xs text-zinc-400">
+              <input
+                type="checkbox"
+                checked={currentChannelOnly}
+                onChange={(e) => setCurrentChannelOnly(e.target.checked)}
+                className="rounded border-zinc-600"
+              />
+              Current channel only
+            </label>
+          )}
+          {debouncedQuery && !isFetching && (
+            <span className="ml-auto text-xs text-zinc-500">
+              {resultCount} result{resultCount !== 1 ? "s" : ""}
+            </span>
+          )}
         </div>
 
         {/* Results */}
@@ -127,12 +151,29 @@ export function SearchDialog({ workspaceId, open, onClose }: SearchDialogProps) 
                   {new Date(result.message.createdAt).toLocaleDateString()}
                 </span>
               </div>
-              <p className="mt-1 line-clamp-2 text-sm text-zinc-200">
-                {result.message.content}
-              </p>
+              {"headline" in result && result.headline ? (
+                <p
+                  className="search-headline mt-1 line-clamp-2 text-sm text-zinc-200"
+                  dangerouslySetInnerHTML={{ __html: result.headline as string }}
+                />
+              ) : (
+                <p className="mt-1 line-clamp-2 text-sm text-zinc-200">
+                  {result.message.content}
+                </p>
+              )}
             </button>
           ))}
         </div>
+
+        <style>{`
+          .search-headline mark,
+          .search-headline b {
+            background-color: rgba(99, 102, 241, 0.3);
+            color: #c7d2fe;
+            border-radius: 2px;
+            padding: 0 2px;
+          }
+        `}</style>
       </div>
     </div>
   );

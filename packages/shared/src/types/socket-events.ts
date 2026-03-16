@@ -72,6 +72,7 @@ export interface ClientToServerEvents {
     type?: MessageType;
     payload?: Record<string, unknown>;
     parentId?: string | null;
+    expiresAt?: string;
   }) => void;
   "message:edit": (data: { messageId: string; content: string }) => void;
   "message:delete": (data: { messageId: string }) => void;
