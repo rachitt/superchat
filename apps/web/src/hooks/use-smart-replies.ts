@@ -15,18 +15,22 @@ export function useSmartReplies(channelId: string) {
   const lastFetchedMessageId = useRef<string | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const isTyping = useRef(false);
+  const channelIdRef = useRef(channelId);
+  channelIdRef.current = channelId;
 
   const { setSmartReplies } = useAiStore();
 
   const mutation = useMutation(trpc.ai.smartReplies.mutationOptions());
+  const mutateRef = useRef(mutation.mutate);
+  mutateRef.current = mutation.mutate;
 
   const fetchReplies = useCallback(
     (messageId: string) => {
       if (lastFetchedMessageId.current === messageId) return;
       lastFetchedMessageId.current = messageId;
 
-      mutation.mutate(
-        { channelId, messageId },
+      mutateRef.current(
+        { channelId: channelIdRef.current, messageId },
         {
           onSuccess: (data) => {
             setSmartReplies(messageId, data.replies);
@@ -34,7 +38,7 @@ export function useSmartReplies(channelId: string) {
         }
       );
     },
-    [channelId, mutation, setSmartReplies]
+    [setSmartReplies]
   );
 
   // Watch for new messages in the active channel

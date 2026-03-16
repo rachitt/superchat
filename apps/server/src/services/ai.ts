@@ -207,17 +207,35 @@ export async function summarizeChannel(channelId: string, messageCount: number =
  * Summarize a thread (all replies to a parent message).
  */
 export async function summarizeThread(parentId: string): Promise<string> {
-  const threadMessages = await db
-    .select({
-      content: messages.content,
-      type: messages.type,
-      username: users.username,
-      displayName: users.name,
-    })
-    .from(messages)
-    .innerJoin(users, eq(users.id, messages.authorId))
-    .where(and(eq(messages.parentId, parentId), isNull(messages.deletedAt)))
-    .orderBy(messages.createdAt);
+  // Fetch both the parent message and all its replies
+  const [parentMsg, ...replies] = await Promise.all([
+    db
+      .select({
+        content: messages.content,
+        type: messages.type,
+        username: users.username,
+        displayName: users.name,
+      })
+      .from(messages)
+      .innerJoin(users, eq(users.id, messages.authorId))
+      .where(and(eq(messages.id, parentId), isNull(messages.deletedAt)))
+      .limit(1)
+      .then((rows) => rows[0]),
+    db
+      .select({
+        content: messages.content,
+        type: messages.type,
+        username: users.username,
+        displayName: users.name,
+      })
+      .from(messages)
+      .innerJoin(users, eq(users.id, messages.authorId))
+      .where(and(eq(messages.parentId, parentId), isNull(messages.deletedAt)))
+      .orderBy(messages.createdAt)
+      .then((rows) => rows),
+  ]);
+
+  const threadMessages = parentMsg ? [parentMsg, ...replies.flat()] : replies.flat();
 
   if (threadMessages.length < 2) {
     return "Not enough messages in this thread to summarize.";

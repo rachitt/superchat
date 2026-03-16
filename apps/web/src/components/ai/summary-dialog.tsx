@@ -8,12 +8,11 @@ import { useAiStore } from "@/stores/ai-store";
 const MESSAGE_COUNT_OPTIONS = [10, 25, 50, 100] as const;
 
 interface SummaryDialogProps {
-  channelId: string;
   onClose: () => void;
   onSummarize: (messageCount: number) => void;
 }
 
-export function SummaryDialog({ channelId, onClose, onSummarize }: SummaryDialogProps) {
+export function SummaryDialog({ onClose, onSummarize }: SummaryDialogProps) {
   const summary = useAiStore((s) => s.summary);
   const isSummarizing = useAiStore((s) => s.isSummarizing);
   const [messageCount, setMessageCount] = useState<number>(50);

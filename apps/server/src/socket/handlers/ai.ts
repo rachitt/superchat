@@ -53,23 +53,31 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
     // Determine thread parentId:
     // If the caller already specified a parentId (continuing a thread), use it.
     // Otherwise, find the user's message that triggered this AI chat to auto-thread.
+    // Retry briefly since message:send and ai:chat are emitted back-to-back and
+    // Socket.IO doesn't await async handlers — the message may not be in the DB yet.
     let threadParentId = parentId ?? null;
     if (!threadParentId) {
-      // Find the most recent user message in this channel to use as thread parent
-      const [userMsg] = await db
-        .select({ id: messages.id })
-        .from(messages)
-        .where(
-          and(
-            eq(messages.channelId, channelId),
-            eq(messages.authorId, userId),
-            eq(messages.type, "text"),
-            isNull(messages.deletedAt)
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const [userMsg] = await db
+          .select({ id: messages.id })
+          .from(messages)
+          .where(
+            and(
+              eq(messages.channelId, channelId),
+              eq(messages.authorId, userId),
+              eq(messages.type, "text"),
+              isNull(messages.deletedAt)
+            )
           )
-        )
-        .orderBy(desc(messages.createdAt))
-        .limit(1);
-      if (userMsg) threadParentId = userMsg.id;
+          .orderBy(desc(messages.createdAt))
+          .limit(1);
+        if (userMsg) {
+          threadParentId = userMsg.id;
+          break;
+        }
+        // Wait briefly for the message:send handler to finish inserting
+        if (attempt < 2) await new Promise((r) => setTimeout(r, 100));
+      }
     }
 
     // Create a placeholder bot message in the database

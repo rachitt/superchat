@@ -149,19 +149,22 @@ export function MessageInput({ channelId }: MessageInputProps) {
         );
       });
 
+      // Clamp index to the current filtered list length
+      const clampedIndex = Math.min(mentionIndex, Math.max(filtered.length - 1, 0));
+
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setMentionIndex((i) => Math.min(i + 1, filtered.length - 1));
+        setMentionIndex(Math.min(clampedIndex + 1, filtered.length - 1));
         return;
       }
       if (e.key === "ArrowUp") {
         e.preventDefault();
-        setMentionIndex((i) => Math.max(i - 1, 0));
+        setMentionIndex(Math.max(clampedIndex - 1, 0));
         return;
       }
       if (e.key === "Enter" && filtered.length > 0) {
         e.preventDefault();
-        handleMentionSelect(filtered[mentionIndex]);
+        handleMentionSelect(filtered[clampedIndex]);
         return;
       }
       if (e.key === "Escape") {

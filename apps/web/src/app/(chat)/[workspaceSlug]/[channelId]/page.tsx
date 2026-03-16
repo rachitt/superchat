@@ -130,7 +130,6 @@ export default function ChannelPage() {
       {activeThreadId && <ThreadPanel parentId={activeThreadId} channelId={channelId} />}
       {showSummary && (
         <SummaryDialog
-          channelId={channelId}
           onClose={() => setShowSummary(false)}
           onSummarize={handleSummarize}
         />
