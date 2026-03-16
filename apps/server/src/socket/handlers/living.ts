@@ -19,47 +19,110 @@ export function registerLivingHandlers(io: IOServer, socket: IOSocket) {
         .where(eq(messages.id, messageId))
         .limit(1);
 
-      if (!msg || msg.type !== "poll") return;
+      if (!msg) return;
 
-      const payload = msg.payload as {
-        question: string;
-        options: { id: number; text: string; votes: string[] }[];
-      };
+      const payload = msg.payload as Record<string, unknown>;
 
-      if (action === "vote" && data?.optionId !== undefined) {
+      // ── Poll interactions ──
+      if (msg.type === "poll" && action === "vote" && data?.optionId !== undefined) {
+        const pollPayload = payload as {
+          question: string;
+          options: { id: number; text: string; votes: string[] }[];
+        };
         const optionId = data.optionId as number;
 
-        // Remove previous vote from any option
-        for (const option of payload.options) {
+        for (const option of pollPayload.options) {
           option.votes = option.votes.filter((v) => v !== userId);
         }
 
-        // Add vote to selected option (toggle off if already voted for this one)
-        const target = payload.options.find((o) => o.id === optionId);
+        const target = pollPayload.options.find((o) => o.id === optionId);
         if (target) {
           target.votes.push(userId);
         }
 
-        // Atomic update with optimistic locking
-        const [updated] = await db
-          .update(messages)
-          .set({
-            payload,
-            payloadVersion: sql`${messages.payloadVersion} + 1`,
-          })
-          .where(eq(messages.id, messageId))
-          .returning();
+        await broadcastPayloadUpdate(io, messageId, pollPayload);
+        return;
+      }
 
-        if (updated) {
-          io.to(`channel:${updated.channelId}`).emit("living:update", {
-            messageId,
-            payload: updated.payload as Record<string, unknown>,
-            version: updated.payloadVersion,
-          });
+      // ── Live score interactions ──
+      if (msg.type === "live_score") {
+        const scorePayload = payload as {
+          title: string;
+          teams: { name: string; score: number; color?: string }[];
+          status: "live" | "finished";
+          lastUpdate?: string;
+        };
+
+        if (action === "update_score" && data?.teamIndex !== undefined && data?.score !== undefined) {
+          const teamIndex = data.teamIndex as number;
+          const score = data.score as number;
+          if (teamIndex >= 0 && teamIndex < scorePayload.teams.length) {
+            scorePayload.teams[teamIndex].score = score;
+            scorePayload.lastUpdate = new Date().toISOString();
+            await broadcastPayloadUpdate(io, messageId, scorePayload);
+          }
+          return;
         }
+
+        if (action === "increment_score" && data?.teamIndex !== undefined) {
+          const teamIndex = data.teamIndex as number;
+          const amount = (data.amount as number) || 1;
+          if (teamIndex >= 0 && teamIndex < scorePayload.teams.length) {
+            scorePayload.teams[teamIndex].score += amount;
+            scorePayload.lastUpdate = new Date().toISOString();
+            await broadcastPayloadUpdate(io, messageId, scorePayload);
+          }
+          return;
+        }
+
+        if (action === "finish") {
+          scorePayload.status = "finished";
+          scorePayload.lastUpdate = new Date().toISOString();
+          await broadcastPayloadUpdate(io, messageId, scorePayload);
+          return;
+        }
+      }
+
+      // ── Dynamic card interactions ──
+      if (msg.type === "dynamic_card" && action === "update_field" && data?.fields) {
+        const cardPayload = payload as {
+          title: string;
+          description?: string;
+          imageUrl?: string;
+          linkUrl?: string;
+          linkLabel?: string;
+          color?: string;
+          fields?: { label: string; value: string }[];
+        };
+        cardPayload.fields = data.fields as { label: string; value: string }[];
+        await broadcastPayloadUpdate(io, messageId, cardPayload);
+        return;
       }
     } catch (err) {
       handleSocketError(socket, err);
     }
   });
+}
+
+async function broadcastPayloadUpdate(
+  io: IOServer,
+  messageId: string,
+  payload: Record<string, unknown>
+) {
+  const [updated] = await db
+    .update(messages)
+    .set({
+      payload,
+      payloadVersion: sql`${messages.payloadVersion} + 1`,
+    })
+    .where(eq(messages.id, messageId))
+    .returning();
+
+  if (updated) {
+    io.to(`channel:${updated.channelId}`).emit("living:update", {
+      messageId,
+      payload: updated.payload as Record<string, unknown>,
+      version: updated.payloadVersion,
+    });
+  }
 }

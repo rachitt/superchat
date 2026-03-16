@@ -12,6 +12,10 @@ import { useMutation } from "@tanstack/react-query";
 import { SmartReplyBar } from "../ai/smart-reply-bar";
 import { OnlineIndicator } from "../ui/online-indicator";
 import { PollWidget } from "../living/poll-widget";
+import { CountdownWidget } from "../living/countdown-widget";
+import { SelfDestructWidget } from "../living/self-destruct-widget";
+import { DynamicCardWidget } from "../living/dynamic-card-widget";
+import { LiveScoreWidget } from "../living/live-score-widget";
 
 interface MessageItemProps {
   message: MessageData & {
@@ -85,8 +89,9 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
 
   const isOwn = session?.user?.id === message.authorId;
   const isPoll = message.type === "poll";
+  const isLivingMessage = ["poll", "countdown", "live_score", "dynamic_card", "self_destruct"].includes(message.type);
   const isBot = message.type === "system";
-  const displayName = isBot ? "SuperBot" : isPoll ? "SuperBot" : (message.author?.name ?? message.authorId.slice(0, 8));
+  const displayName = isBot ? "SuperBot" : isLivingMessage ? "SuperBot" : (message.author?.name ?? message.authorId.slice(0, 8));
   const initials = isBot ? "AI" : displayName.slice(0, 2).toUpperCase();
 
   const time = new Date(message.createdAt).toLocaleTimeString([], {
@@ -221,6 +226,26 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
           </div>
         ) : message.type === "poll" && message.payload ? (
           <PollWidget
+            messageId={message.id}
+            payload={message.payload as any}
+          />
+        ) : message.type === "countdown" && message.payload ? (
+          <CountdownWidget
+            messageId={message.id}
+            payload={message.payload as any}
+          />
+        ) : message.type === "self_destruct" && message.payload ? (
+          <SelfDestructWidget
+            messageId={message.id}
+            payload={{ ...(message.payload as any), expiresAt: message.expiresAt || (message.payload as any).expiresAt }}
+          />
+        ) : message.type === "dynamic_card" && message.payload ? (
+          <DynamicCardWidget
+            messageId={message.id}
+            payload={message.payload as any}
+          />
+        ) : message.type === "live_score" && message.payload ? (
+          <LiveScoreWidget
             messageId={message.id}
             payload={message.payload as any}
           />
