@@ -13,14 +13,21 @@ export function getSocket(): TypedSocket {
       autoConnect: false,
       withCredentials: true,
     });
+    socket.on("connect", () => console.log("[socket] connected:", socket?.id));
+    socket.on("connect_error", (err) => console.error("[socket] connect error:", err.message));
+    socket.on("disconnect", (reason) => console.log("[socket] disconnected:", reason));
   }
   return socket;
 }
 
-export function connectSocket(token: string) {
+export function connectSocket(token?: string) {
   const s = getSocket();
-  s.auth = { token };
-  s.connect();
+  if (token) {
+    s.auth = { token };
+  }
+  if (!s.connected) {
+    s.connect();
+  }
   return s;
 }
 

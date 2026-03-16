@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "WATCHPACK_POLLING=true next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -20,6 +20,8 @@
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "socket.io-client": "^4",
     "superjson": "^2",
     "zustand": "^5"

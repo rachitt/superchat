@@ -3,6 +3,7 @@ import type { ClientToServerEvents, ServerToClientEvents } from "@superchat/shar
 import type { auth as Auth } from "../lib/auth.js";
 import { registerMessageHandlers } from "./handlers/message.js";
 import { registerPresenceHandlers } from "./handlers/presence.js";
+import { registerAiHandlers } from "./handlers/ai.js";
 
 type IOServer = Server<ClientToServerEvents, ServerToClientEvents>;
 
@@ -47,5 +48,6 @@ export function setupSocketHandlers(io: IOServer, auth: typeof Auth) {
 
     registerMessageHandlers(io, socket);
     registerPresenceHandlers(io, socket);
+    registerAiHandlers(io, socket);
   });
 }

@@ -14,12 +14,16 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.58",
+    "@ai-sdk/google": "^3.0.43",
+    "@ai-sdk/openai": "^3.0.41",
     "@aws-sdk/client-s3": "^3.1009.0",
     "@aws-sdk/s3-request-presigner": "^3.1009.0",
     "@fastify/cors": "^11.2.0",
     "@socket.io/redis-adapter": "^8.3.0",
     "@superchat/shared": "workspace:*",
     "@trpc/server": "^11",
+    "ai": "^6.0.116",
     "better-auth": "^1",
     "bullmq": "^5",
     "dotenv": "^16",

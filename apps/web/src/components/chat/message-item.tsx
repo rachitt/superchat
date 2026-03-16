@@ -4,7 +4,11 @@ import { useState } from "react";
 import type { MessageData } from "@superchat/shared";
 import { getSocket } from "@/lib/socket";
 import { useChatStore } from "@/stores/chat-store";
+import { useAiStore } from "@/stores/ai-store";
 import { useSession } from "@/lib/auth-client";
+import { useTRPC } from "@/lib/trpc";
+import { useMutation } from "@tanstack/react-query";
+import { SmartReplyBar } from "../ai/smart-reply-bar";
 
 interface MessageItemProps {
   message: MessageData & {
@@ -25,9 +29,17 @@ export function MessageItem({ message, showThread = true }: MessageItemProps) {
   const { data: session } = useSession();
   const setActiveThread = useChatStore((s) => s.setActiveThread);
   const reactions = useChatStore((s) => s.reactions.get(message.id)) ?? EMPTY_REACTIONS;
+  const smartReplies = useAiStore((s) => s.smartReplies.get(message.id));
+  const setSmartReplies = useAiStore((s) => s.setSmartReplies);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
+  const [loadingReplies, setLoadingReplies] = useState(false);
+
+  const trpc = useTRPC();
+  const smartReplyMutation = useMutation(
+    trpc.ai.smartReplies.mutationOptions()
+  );
 
   const isOwn = session?.user?.id === message.authorId;
   const displayName = message.author?.displayName ?? message.authorId.slice(0, 8);
@@ -54,6 +66,22 @@ export function MessageItem({ message, showThread = true }: MessageItemProps) {
   const handleDelete = () => {
     const socket = getSocket();
     socket.emit("message:delete", { messageId: message.id });
+  };
+
+  const handleSmartReplies = async () => {
+    if (smartReplies || loadingReplies) return;
+    setLoadingReplies(true);
+    try {
+      const result = await smartReplyMutation.mutateAsync({
+        channelId: message.channelId,
+        messageId: message.id,
+      });
+      setSmartReplies(message.id, result.replies);
+    } catch {
+      // silently fail
+    } finally {
+      setLoadingReplies(false);
+    }
   };
 
   return (
@@ -125,6 +153,13 @@ export function MessageItem({ message, showThread = true }: MessageItemProps) {
             ))}
           </div>
         )}
+
+        {smartReplies && (
+          <SmartReplyBar
+            channelId={message.channelId}
+            messageId={message.id}
+          />
+        )}
       </div>
 
       {/* Action buttons on hover */}
@@ -145,6 +180,14 @@ export function MessageItem({ message, showThread = true }: MessageItemProps) {
             💬
           </button>
         )}
+        <button
+          onClick={handleSmartReplies}
+          disabled={loadingReplies}
+          className="rounded p-1 text-xs text-zinc-400 hover:bg-zinc-700 hover:text-violet-300 disabled:opacity-50"
+          title="Smart replies"
+        >
+          {loadingReplies ? "..." : "✨"}
+        </button>
         {isOwn && (
           <>
             <button

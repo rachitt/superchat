@@ -27,3 +27,9 @@ export const MAX_MESSAGE_LENGTH = 4000;
 export const MAX_CHANNEL_NAME_LENGTH = 80;
 export const MAX_WORKSPACE_NAME_LENGTH = 100;
 export const MESSAGES_PER_PAGE = 50;
+
+// AI
+export const AI_BOT_NAME = "SuperBot";
+export const AI_MAX_CONTEXT_MESSAGES = 50;
+export const AI_SMART_REPLY_COUNT = 3;
+export const AI_RATE_LIMIT_PER_MINUTE = 10;

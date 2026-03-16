@@ -37,6 +37,23 @@ export interface LivingInteraction {
   data?: Record<string, unknown>;
 }
 
+// ── AI data shapes ──
+
+export interface AiStreamData {
+  channelId: string;
+  /** The bot's message ID (created when streaming starts) */
+  messageId: string;
+  /** Incremental text chunk */
+  chunk: string;
+}
+
+export interface AiStreamDone {
+  channelId: string;
+  messageId: string;
+  /** Full completed content */
+  content: string;
+}
+
 // ── Client → Server events ──
 
 export interface ClientToServerEvents {
@@ -56,6 +73,8 @@ export interface ClientToServerEvents {
   "channel:leave": (data: { channelId: string }) => void;
   "presence:update": (data: { status: "online" | "away" }) => void;
   "living:interact": (data: LivingInteraction) => void;
+  "ai:chat": (data: { channelId: string; message: string; parentId?: string | null }) => void;
+  "ai:stop": (data: { messageId: string }) => void;
 }
 
 // ── Server → Client events ──
@@ -69,5 +88,8 @@ export interface ServerToClientEvents {
   "presence:changed": (data: PresenceData) => void;
   "channel:updated": (data: { channelId: string }) => void;
   "living:update": (data: { messageId: string; payload: Record<string, unknown>; version: number }) => void;
+  "ai:stream": (data: AiStreamData) => void;
+  "ai:stream:done": (data: AiStreamDone) => void;
+  "ai:stream:error": (data: { channelId: string; messageId?: string; error: string }) => void;
   "error": (data: { message: string; code?: string }) => void;
 }

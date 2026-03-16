@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useChatStore } from "@/stores/chat-store";
 import { MessageItem } from "./message-item";
+import { AiMessage } from "../ai/ai-message";
 
 const EMPTY: never[] = [];
 
@@ -25,9 +26,17 @@ export function MessageList({ channelId }: MessageListProps) {
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
       <div className="mt-auto flex flex-col gap-0.5 py-4">
-        {topLevelMessages.map((msg) => (
-          <MessageItem key={msg.id} message={msg} />
-        ))}
+        {topLevelMessages.map((msg) =>
+          msg.type === "system" ? (
+            <AiMessage
+              key={msg.id}
+              messageId={msg.id}
+              persistedContent={msg.content}
+            />
+          ) : (
+            <MessageItem key={msg.id} message={msg} />
+          )
+        )}
         <div ref={bottomRef} />
       </div>
 

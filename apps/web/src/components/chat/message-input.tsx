@@ -2,12 +2,14 @@
 
 import { useState, useCallback, useRef } from "react";
 import { getSocket } from "@/lib/socket";
-import { MAX_MESSAGE_LENGTH } from "@superchat/shared";
+import { MAX_MESSAGE_LENGTH, AI_BOT_NAME } from "@superchat/shared";
 import { FileUpload } from "./file-upload";
 
 interface MessageInputProps {
   channelId: string;
 }
+
+const AI_MENTION_REGEX = new RegExp(`^@${AI_BOT_NAME}\\s+`, "i");
 
 export function MessageInput({ channelId }: MessageInputProps) {
   const [content, setContent] = useState("");
@@ -28,10 +30,25 @@ export function MessageInput({ channelId }: MessageInputProps) {
     if (!trimmed) return;
 
     const socket = getSocket();
-    socket.emit("message:send", {
-      channelId,
-      content: trimmed,
-    });
+
+    // Check if the message is directed at the AI bot
+    if (AI_MENTION_REGEX.test(trimmed)) {
+      const aiMessage = trimmed.replace(AI_MENTION_REGEX, "").trim();
+      if (aiMessage) {
+        // Send the user's message first as a regular message
+        socket.emit("message:send", {
+          channelId,
+          content: trimmed,
+        });
+        // Then trigger the AI response
+        socket.emit("ai:chat", { channelId, message: aiMessage });
+      }
+    } else {
+      socket.emit("message:send", {
+        channelId,
+        content: trimmed,
+      });
+    }
     socket.emit("typing:stop", { channelId });
 
     setContent("");
@@ -66,7 +83,7 @@ export function MessageInput({ channelId }: MessageInputProps) {
             handleTyping();
           }}
           onKeyDown={handleKeyDown}
-          placeholder="Type a message..."
+          placeholder={`Type a message... (use @${AI_BOT_NAME} to ask AI)`}
           maxLength={MAX_MESSAGE_LENGTH}
           rows={1}
           className="flex-1 resize-none bg-transparent px-2 py-1 text-sm text-zinc-100 placeholder-zinc-500 outline-none"

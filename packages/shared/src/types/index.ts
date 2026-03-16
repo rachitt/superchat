@@ -4,6 +4,8 @@ export type {
   PresenceData,
   ReactionData,
   LivingInteraction,
+  AiStreamData,
+  AiStreamDone,
   ClientToServerEvents,
   ServerToClientEvents,
 } from "./socket-events";
