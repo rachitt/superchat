@@ -1,4 +1,4 @@
-import type { MessageType } from "../constants.js";
+import type { MessageType } from "../constants";
 
 // ── Data shapes ──
 

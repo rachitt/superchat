@@ -1,6 +1,6 @@
 import { pgTable, uuid, varchar, text, timestamp } from "drizzle-orm/pg-core";
-import { workspaces } from "./workspaces.js";
-import { users } from "./users.js";
+import { workspaces } from "./workspaces";
+import { user } from "./auth";
 
 export const channels = pgTable("channels", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -10,9 +10,9 @@ export const channels = pgTable("channels", {
   name: varchar("name", { length: 80 }).notNull(),
   description: text("description"),
   type: varchar("type", { length: 20 }).notNull().default("public"),
-  createdBy: uuid("created_by")
+  createdBy: text("created_by")
     .notNull()
-    .references(() => users.id),
+    .references(() => user.id),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
 });
 
@@ -20,8 +20,8 @@ export const channelMembers = pgTable("channel_members", {
   channelId: uuid("channel_id")
     .notNull()
     .references(() => channels.id, { onDelete: "cascade" }),
-  userId: uuid("user_id")
+  userId: text("user_id")
     .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
+    .references(() => user.id, { onDelete: "cascade" }),
   lastReadAt: timestamp("last_read_at", { mode: "date" }),
 });

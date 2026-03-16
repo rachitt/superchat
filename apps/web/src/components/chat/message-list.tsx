@@ -4,12 +4,14 @@ import { useEffect, useRef } from "react";
 import { useChatStore } from "@/stores/chat-store";
 import { MessageItem } from "./message-item";
 
+const EMPTY: never[] = [];
+
 interface MessageListProps {
   channelId: string;
 }
 
 export function MessageList({ channelId }: MessageListProps) {
-  const messages = useChatStore((s) => s.messages.get(channelId) ?? []);
+  const messages = useChatStore((s) => s.messages.get(channelId)) ?? EMPTY;
   const typingUsers = useChatStore((s) => s.typingUsers.get(channelId));
   const bottomRef = useRef<HTMLDivElement>(null);
 

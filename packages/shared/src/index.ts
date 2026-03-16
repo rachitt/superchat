@@ -1,3 +1,3 @@
-export * from "./constants.js";
-export * from "./types/index.js";
-export * from "./validators/index.js";
+export * from "./constants";
+export * from "./types/index";
+export * from "./validators/index";

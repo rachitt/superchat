@@ -3,4 +3,4 @@ export {
   editMessageSchema,
   type SendMessageInput,
   type EditMessageInput,
-} from "./message.js";
+} from "./message";

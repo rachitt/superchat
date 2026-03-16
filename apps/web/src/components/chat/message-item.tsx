@@ -18,12 +18,13 @@ interface MessageItemProps {
   showThread?: boolean;
 }
 
+const EMPTY_REACTIONS: never[] = [];
 const QUICK_EMOJIS = ["👍", "❤️", "😂", "🎉", "😮", "🔥"];
 
 export function MessageItem({ message, showThread = true }: MessageItemProps) {
   const { data: session } = useSession();
   const setActiveThread = useChatStore((s) => s.setActiveThread);
-  const reactions = useChatStore((s) => s.reactions.get(message.id) ?? []);
+  const reactions = useChatStore((s) => s.reactions.get(message.id)) ?? EMPTY_REACTIONS;
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);

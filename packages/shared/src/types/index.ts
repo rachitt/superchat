@@ -6,4 +6,4 @@ export type {
   LivingInteraction,
   ClientToServerEvents,
   ServerToClientEvents,
-} from "./socket-events.js";
+} from "./socket-events";

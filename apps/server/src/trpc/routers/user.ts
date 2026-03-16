@@ -1,25 +1,25 @@
 import { z } from "zod";
 import { eq } from "drizzle-orm";
-import { router, protectedProcedure, publicProcedure } from "../trpc.js";
-import { users } from "../../db/schema/index.js";
+import { router, protectedProcedure } from "../trpc.js";
+import { user as users } from "../../db/schema/index.js";
 
 export const userRouter = router({
   me: protectedProcedure.query(async ({ ctx }) => {
-    const [user] = await ctx.db
+    const [u] = await ctx.db
       .select()
       .from(users)
       .where(eq(users.id, ctx.userId))
       .limit(1);
-    return user ?? null;
+    return u ?? null;
   }),
 
   updateProfile: protectedProcedure
     .input(
       z.object({
-        displayName: z.string().min(1).max(100).optional(),
+        name: z.string().min(1).max(100).optional(),
         bio: z.string().max(500).optional(),
         status: z.string().max(100).optional(),
-        avatarUrl: z.string().url().optional(),
+        image: z.string().url().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -34,12 +34,12 @@ export const userRouter = router({
   getById: protectedProcedure
     .input(z.object({ userId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      const [user] = await ctx.db
+      const [u] = await ctx.db
         .select({
           id: users.id,
           username: users.username,
-          displayName: users.displayName,
-          avatarUrl: users.avatarUrl,
+          name: users.name,
+          image: users.image,
           status: users.status,
           bio: users.bio,
           xp: users.xp,
@@ -48,6 +48,6 @@ export const userRouter = router({
         .from(users)
         .where(eq(users.id, input.userId))
         .limit(1);
-      return user ?? null;
+      return u ?? null;
     }),
 });

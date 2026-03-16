@@ -41,11 +41,16 @@ async function main() {
       body,
     });
     const response = await auth.handler(request);
-    const resHeaders: Record<string, string> = {};
     response.headers.forEach((value, key) => {
-      resHeaders[key] = value;
+      if (key === "set-cookie") return; // handled separately
+      reply.header(key, value);
     });
-    reply.status(response.status).headers(resHeaders).send(response.body);
+    // Set-Cookie can have multiple values
+    const cookies = response.headers.getSetCookie();
+    for (const cookie of cookies) {
+      reply.header("set-cookie", cookie);
+    }
+    reply.status(response.status).send(response.body);
   });
 
   // ── tRPC ──

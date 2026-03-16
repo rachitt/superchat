@@ -17,8 +17,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   }, [session, isPending, router]);
 
   useEffect(() => {
-    if (session?.user) {
-      connectSocket(session.user.id, session.user.name);
+    if (session?.session?.token) {
+      connectSocket(session.session.token);
       return () => disconnectSocket();
     }
   }, [session]);

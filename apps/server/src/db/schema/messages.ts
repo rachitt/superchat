@@ -9,8 +9,8 @@ import {
   jsonb,
   index,
 } from "drizzle-orm/pg-core";
-import { channels } from "./channels.js";
-import { users } from "./users.js";
+import { channels } from "./channels";
+import { user } from "./auth";
 
 export const messages = pgTable(
   "messages",
@@ -19,9 +19,9 @@ export const messages = pgTable(
     channelId: uuid("channel_id")
       .notNull()
       .references(() => channels.id, { onDelete: "cascade" }),
-    authorId: uuid("author_id")
+    authorId: text("author_id")
       .notNull()
-      .references(() => users.id),
+      .references(() => user.id),
     type: varchar("type", { length: 30 }).notNull().default("text"),
     content: text("content").notNull(),
     payload: jsonb("payload"),
@@ -43,9 +43,9 @@ export const reactions = pgTable("reactions", {
   messageId: uuid("message_id")
     .notNull()
     .references(() => messages.id, { onDelete: "cascade" }),
-  userId: uuid("user_id")
+  userId: text("user_id")
     .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
+    .references(() => user.id, { onDelete: "cascade" }),
   emoji: varchar("emoji", { length: 20 }).notNull(),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
 });

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { eq, desc, lt, and, isNull, sql } from "drizzle-orm";
 import { router, protectedProcedure } from "../trpc.js";
-import { messages, users, reactions, attachments } from "../../db/schema/index.js";
+import { messages, user as users, reactions, attachments } from "../../db/schema/index.js";
 import { MESSAGES_PER_PAGE } from "@superchat/shared";
 
 export const messageRouter = router({
@@ -29,8 +29,8 @@ export const messageRouter = router({
           author: {
             id: users.id,
             username: users.username,
-            displayName: users.displayName,
-            avatarUrl: users.avatarUrl,
+            name: users.name,
+            image: users.image,
           },
         })
         .from(messages)
@@ -57,8 +57,8 @@ export const messageRouter = router({
           author: {
             id: users.id,
             username: users.username,
-            displayName: users.displayName,
-            avatarUrl: users.avatarUrl,
+            name: users.name,
+            image: users.image,
           },
         })
         .from(messages)

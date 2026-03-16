@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MESSAGE_TYPES, MAX_MESSAGE_LENGTH } from "../constants.js";
+import { MESSAGE_TYPES, MAX_MESSAGE_LENGTH } from "../constants";
 
 export const sendMessageSchema = z.object({
   channelId: z.string().uuid(),

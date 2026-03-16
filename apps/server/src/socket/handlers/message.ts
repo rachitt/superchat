@@ -3,7 +3,7 @@ import { eq, and } from "drizzle-orm";
 import type { ClientToServerEvents, ServerToClientEvents } from "@superchat/shared";
 import { sendMessageSchema } from "@superchat/shared";
 import { db } from "../../db/index.js";
-import { messages, users, reactions } from "../../db/schema/index.js";
+import { messages, user as users, reactions } from "../../db/schema/index.js";
 
 type IOServer = Server<ClientToServerEvents, ServerToClientEvents>;
 type IOSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -34,8 +34,8 @@ export function registerMessageHandlers(io: IOServer, socket: IOSocket) {
       .select({
         id: users.id,
         username: users.username,
-        displayName: users.displayName,
-        avatarUrl: users.avatarUrl,
+        name: users.name,
+        image: users.image,
       })
       .from(users)
       .where(eq(users.id, userId));

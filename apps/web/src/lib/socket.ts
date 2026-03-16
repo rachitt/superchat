@@ -17,9 +17,9 @@ export function getSocket(): TypedSocket {
   return socket;
 }
 
-export function connectSocket(userId: string, username: string) {
+export function connectSocket(token: string) {
   const s = getSocket();
-  s.auth = { userId, username };
+  s.auth = { token };
   s.connect();
   return s;
 }

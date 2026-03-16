@@ -11,7 +11,7 @@ export function getTRPCClient() {
   return createTRPCClient<AppRouter>({
     links: [
       httpBatchLink({
-        url: `${process.env.NEXT_PUBLIC_API_URL}/trpc`,
+        url: "/trpc",
         transformer: superjson,
       }),
     ],
