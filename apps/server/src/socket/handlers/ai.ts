@@ -6,6 +6,10 @@ import { streamAiChat } from "../../services/ai.js";
 import { db } from "../../db/index.js";
 import { messages, user as users } from "../../db/schema/index.js";
 import { checkAiRateLimit } from "../../lib/rate-limit.js";
+import { AppError, ErrorCode } from "../../lib/errors.js";
+import { createChildLogger } from "../../lib/logger.js";
+
+const log = createChildLogger({ module: "ai" });
 
 type IOServer = Server<ClientToServerEvents, ServerToClientEvents>;
 type IOSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -20,6 +24,7 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
     // Rate limit check
     const rateLimit = await checkAiRateLimit(userId);
     if (rateLimit.limited) {
+      log.warn({ userId, channelId }, "AI rate limit exceeded");
       socket.emit("ai:stream:error", {
         channelId,
         error: rateLimit.message,
@@ -114,6 +119,7 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
       });
     } catch (err) {
       clearTimeout(timeout);
+      log.error({ err, channelId, messageId }, "AI stream failed");
       const errorMessage = err instanceof Error ? err.message : "AI generation failed";
 
       await db

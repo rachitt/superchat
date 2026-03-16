@@ -10,16 +10,29 @@ import { createAdapter } from "@socket.io/redis-adapter";
 import type { ClientToServerEvents, ServerToClientEvents } from "@superchat/shared";
 import { appRouter, type AppRouter } from "./trpc/routers/index.js";
 import { createContext } from "./trpc/context.js";
-import { db } from "./db/index.js";
+import { db, closeDb } from "./db/index.js";
 import { auth } from "./lib/auth.js";
-import { pubRedis, subRedis } from "./lib/redis.js";
+import { pubRedis, subRedis, closeRedis } from "./lib/redis.js";
 import { setupSocketHandlers } from "./socket/index.js";
+import { closeAllQueues } from "./workers/queue.js";
+import logger from "./lib/logger.js";
+import { AppError } from "./lib/errors.js";
 
 const PORT = parseInt(process.env.PORT || "4000", 10);
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 async function main() {
-  const fastify = Fastify({ logger: true });
+  const fastify = Fastify({
+    logger: {
+      level: process.env.LOG_LEVEL || "info",
+      ...(process.env.NODE_ENV === "development" && {
+        transport: {
+          target: "pino-pretty",
+          options: { colorize: true },
+        },
+      }),
+    },
+  });
 
   // ── CORS ──
   await fastify.register(cors, {
@@ -60,7 +73,7 @@ async function main() {
       router: appRouter,
       createContext: createContext(db, auth),
       onError: ({ path, error }) => {
-        console.error(`tRPC error on ${path}:`, error.message, error.cause ?? "");
+        fastify.log.error({ path, cause: error.cause ?? undefined }, `tRPC error: ${error.message}`);
       },
     } satisfies FastifyTRPCPluginOptions<AppRouter>["trpcOptions"],
   });
@@ -74,9 +87,9 @@ async function main() {
   try {
     await pubRedis.ping();
     ioOptions.adapter = createAdapter(pubRedis, subRedis);
-    console.log("Socket.IO using Redis adapter");
+    fastify.log.info("Socket.IO using Redis adapter");
   } catch {
-    console.log("Socket.IO using in-memory adapter (Redis unavailable)");
+    fastify.log.info("Socket.IO using in-memory adapter (Redis unavailable)");
   }
 
   const io = new Server<ClientToServerEvents, ServerToClientEvents>(
@@ -86,15 +99,41 @@ async function main() {
 
   setupSocketHandlers(io, auth);
 
+  // ── Error handler for non-tRPC routes ──
+  fastify.setErrorHandler((error, _request, reply) => {
+    if (error instanceof AppError) {
+      fastify.log.warn({ code: error.code, details: error.details }, error.message);
+      reply.status(error.statusCode).send({ error: error.message, code: error.code });
+    } else {
+      fastify.log.error({ err: error }, "Unhandled request error");
+      reply.status(500).send({ error: "Internal server error", code: "INTERNAL_ERROR" });
+    }
+  });
+
   // ── Health check ──
   fastify.get("/health", async () => ({ status: "ok" }));
 
+  // ── Graceful shutdown ──
+  async function shutdown() {
+    fastify.log.info("Graceful shutdown initiated...");
+    await fastify.close();
+    io.close();
+    await closeAllQueues();
+    await closeRedis();
+    await closeDb();
+    fastify.log.info("Shutdown complete");
+    process.exit(0);
+  }
+
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
+
   // ── Start ──
   await fastify.listen({ port: PORT, host: "0.0.0.0" });
-  console.log(`Server running on port ${PORT}`);
+  fastify.log.info(`Server running on port ${PORT}`);
 }
 
 main().catch((err) => {
-  console.error(err);
+  logger.error({ err }, "Fatal startup error");
   process.exit(1);
 });

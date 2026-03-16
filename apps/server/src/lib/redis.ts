@@ -16,3 +16,11 @@ function createRedisClient(): Redis {
 export const redis = createRedisClient();
 export const pubRedis = createRedisClient();
 export const subRedis = createRedisClient();
+
+export async function closeRedis() {
+  await Promise.all([
+    redis.quit(),
+    pubRedis.quit(),
+    subRedis.quit(),
+  ]);
+}

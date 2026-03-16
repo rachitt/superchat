@@ -1,12 +1,15 @@
 import type { Server } from "socket.io";
 import type { ClientToServerEvents, ServerToClientEvents } from "@superchat/shared";
 import type { auth as Auth } from "../lib/auth.js";
+import { createChildLogger } from "../lib/logger.js";
 import { registerMessageHandlers } from "./handlers/message.js";
 import { registerPresenceHandlers } from "./handlers/presence.js";
 import { registerAiHandlers } from "./handlers/ai.js";
 import { registerGameHandlers } from "./handlers/game.js";
 
 type IOServer = Server<ClientToServerEvents, ServerToClientEvents>;
+
+const log = createChildLogger({ module: "socket" });
 
 export function setupSocketHandlers(io: IOServer, auth: typeof Auth) {
   io.use(async (socket, next) => {
@@ -20,7 +23,7 @@ export function setupSocketHandlers(io: IOServer, auth: typeof Auth) {
         if (session?.user) {
           socket.data.userId = session.user.id;
           socket.data.username = session.user.name;
-          console.log(`[Socket] Authenticated via cookie: ${session.user.name}`);
+          log.info({ user: session.user.name }, "Authenticated via cookie");
           return next();
         }
       }
@@ -36,23 +39,23 @@ export function setupSocketHandlers(io: IOServer, auth: typeof Auth) {
           if (session?.user) {
             socket.data.userId = session.user.id;
             socket.data.username = session.user.name;
-            console.log(`[Socket] Authenticated via token: ${session.user.name}`);
+            log.info({ user: session.user.name }, "Authenticated via token");
             return next();
           }
         }
       }
 
-      console.log(`[Socket] Auth failed - cookie: ${!!cookieHeader}, token: ${!!token}`);
+      log.info({ hasCookie: !!cookieHeader, hasToken: !!token }, "Auth failed");
       next(new Error("Authentication required"));
     } catch (err) {
-      console.log(`[Socket] Auth error:`, err);
+      log.error({ err }, "Auth error");
       next(new Error("Authentication failed"));
     }
   });
 
   io.on("connection", (socket) => {
     const userId = socket.data.userId as string;
-    console.log(`[Socket] Connected: ${userId} (${socket.data.username})`);
+    log.info({ userId, username: socket.data.username }, "Connected");
     socket.join(`user:${userId}`);
 
     registerMessageHandlers(io, socket);

@@ -5,6 +5,7 @@ import { sendMessageSchema } from "@superchat/shared";
 import { db } from "../../db/index.js";
 import { messages, user as users, reactions } from "../../db/schema/index.js";
 import { autoModerate } from "../../services/moderation.js";
+import { handleSocketError } from "../../lib/errors.js";
 
 type IOServer = Server<ClientToServerEvents, ServerToClientEvents>;
 type IOSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -13,54 +14,58 @@ export function registerMessageHandlers(io: IOServer, socket: IOSocket) {
   const userId = socket.data.userId as string;
 
   socket.on("message:send", async (data) => {
-    const parsed = sendMessageSchema.safeParse(data);
-    if (!parsed.success) {
-      socket.emit("error", { message: "Invalid message data", code: "VALIDATION_ERROR" });
-      return;
+    try {
+      const parsed = sendMessageSchema.safeParse(data);
+      if (!parsed.success) {
+        socket.emit("error", { message: "Invalid message data", code: "VALIDATION_ERROR" });
+        return;
+      }
+
+      // Auto-moderation check
+      const flagReason = await autoModerate(parsed.data.content);
+      if (flagReason) {
+        socket.emit("error", { message: `Message blocked: ${flagReason}`, code: "MODERATION_ERROR" });
+        return;
+      }
+
+      const [message] = await db
+        .insert(messages)
+        .values({
+          channelId: parsed.data.channelId,
+          authorId: userId,
+          type: parsed.data.type ?? "text",
+          content: parsed.data.content,
+          payload: parsed.data.payload,
+          parentId: parsed.data.parentId,
+        })
+        .returning();
+
+      const [author] = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          name: users.name,
+          image: users.image,
+        })
+        .from(users)
+        .where(eq(users.id, userId));
+
+      const messageData = {
+        id: message.id,
+        channelId: message.channelId,
+        authorId: message.authorId,
+        type: message.type as any,
+        content: message.content,
+        payload: message.payload as Record<string, unknown> | undefined,
+        payloadVersion: message.payloadVersion,
+        parentId: message.parentId,
+        createdAt: message.createdAt.toISOString(),
+      };
+
+      io.to(`channel:${message.channelId}`).emit("message:new", messageData);
+    } catch (err) {
+      handleSocketError(socket, err);
     }
-
-    // Auto-moderation check
-    const flagReason = await autoModerate(parsed.data.content);
-    if (flagReason) {
-      socket.emit("error", { message: `Message blocked: ${flagReason}`, code: "MODERATION_ERROR" });
-      return;
-    }
-
-    const [message] = await db
-      .insert(messages)
-      .values({
-        channelId: parsed.data.channelId,
-        authorId: userId,
-        type: parsed.data.type ?? "text",
-        content: parsed.data.content,
-        payload: parsed.data.payload,
-        parentId: parsed.data.parentId,
-      })
-      .returning();
-
-    const [author] = await db
-      .select({
-        id: users.id,
-        username: users.username,
-        name: users.name,
-        image: users.image,
-      })
-      .from(users)
-      .where(eq(users.id, userId));
-
-    const messageData = {
-      id: message.id,
-      channelId: message.channelId,
-      authorId: message.authorId,
-      type: message.type as any,
-      content: message.content,
-      payload: message.payload as Record<string, unknown> | undefined,
-      payloadVersion: message.payloadVersion,
-      parentId: message.parentId,
-      createdAt: message.createdAt.toISOString(),
-    };
-
-    io.to(`channel:${message.channelId}`).emit("message:new", messageData);
   });
 
   socket.on("message:edit", async (data) => {

@@ -5,6 +5,10 @@ import { gameActionSchema } from "@superchat/shared";
 import { db } from "../../db/index.js";
 import { games, gamePlayers, user as users } from "../../db/schema/index.js";
 import { getGameEngine } from "../../games/index.js";
+import { getQueue } from "../../workers/queue.js";
+import { createChildLogger } from "../../lib/logger.js";
+
+const log = createChildLogger({ module: "game" });
 
 type IOServer = Server<ClientToServerEvents, ServerToClientEvents>;
 type IOSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -48,10 +52,10 @@ async function getGamePlayers(gameId: string): Promise<GamePlayerData[]> {
 
 export function registerGameHandlers(io: IOServer, socket: IOSocket) {
   const userId = socket.data.userId as string;
-  console.log(`[Game] Registering handlers for ${userId}`);
+  log.debug({ userId }, "Registering handlers");
 
   socket.on("game:join", async ({ gameId }) => {
-    console.log(`[Game] game:join from ${userId} for ${gameId}`);
+    log.info({ userId, gameId }, "game:join");
     const [game] = await db
       .select()
       .from(games)
@@ -113,7 +117,7 @@ export function registerGameHandlers(io: IOServer, socket: IOSocket) {
   });
 
   socket.on("game:start", async ({ gameId }) => {
-    console.log(`[Game] game:start from ${userId} for ${gameId}`);
+    log.info({ userId, gameId }, "game:start");
     const [game] = await db
       .select()
       .from(games)
@@ -167,7 +171,7 @@ export function registerGameHandlers(io: IOServer, socket: IOSocket) {
   });
 
   socket.on("disconnect", async () => {
-    console.log(`[Game] disconnect from ${userId}`);
+    log.info({ userId }, "disconnect");
 
     // Find all games this player is in
     const playerGames = await db
@@ -194,55 +198,20 @@ export function registerGameHandlers(io: IOServer, socket: IOSocket) {
         // For in-progress games, check if it's their turn and auto-skip after a delay
         const currentState = game.state as GameState;
         if (currentState && "currentTurnUserId" in currentState && currentState.currentTurnUserId === userId) {
-          setTimeout(async () => {
-            try {
-              const [freshGame] = await db
-                .select()
-                .from(games)
-                .where(eq(games.id, gameId))
-                .limit(1);
-
-              if (!freshGame || freshGame.status !== "in_progress") return;
-
-              const freshState = freshGame.state as GameState;
-              if (!("currentTurnUserId" in freshState) || freshState.currentTurnUserId !== userId) return;
-
-              const engine = getGameEngine(freshGame.gameType as any);
-              const players = await getGamePlayers(gameId);
-              const result = engine.handleTimeout(freshState, players);
-
-              // If handleTimeout didn't advance the turn, manually advance it
-              if ("turnOrder" in freshState && "currentTurnUserId" in result.state) {
-                const turnOrder = (freshState as any).turnOrder as string[];
-                const currentIdx = turnOrder.indexOf(userId);
-                if (currentIdx !== -1) {
-                  const nextIdx = (currentIdx + 1) % turnOrder.length;
-                  (result.state as any).currentTurnUserId = turnOrder[nextIdx];
-                }
-              }
-
-              await db
-                .update(games)
-                .set({ state: result.state })
-                .where(eq(games.id, gameId));
-
-              const updatedPlayers = await getGamePlayers(gameId);
-              io.to(`game:${gameId}`).emit("game:state_update", {
-                gameId,
-                state: sanitizeStateForClient(result.state),
-                players: updatedPlayers,
-              });
-            } catch (err) {
-              console.error(`[Game] Error auto-skipping turn for disconnected player ${userId}:`, err);
-            }
-          }, 5000); // 5 second grace period
+          const timeoutQueue = getQueue("game-timeouts");
+          await timeoutQueue.add(
+            "game-timeout",
+            { gameId, userId },
+            { delay: 5000 }
+          );
+          log.info({ gameId, userId }, "Enqueued game timeout job (5s delay)");
         }
       }
     }
   });
 
   socket.on("game:action", async (data) => {
-    console.log(`[Game] game:action from ${userId}:`, data);
+    log.info({ userId, gameId: data.gameId, action: data.action }, "game:action");
     const parsed = gameActionSchema.safeParse(data);
     if (!parsed.success) {
       socket.emit("error", { message: "Invalid game action", code: "VALIDATION_ERROR" });

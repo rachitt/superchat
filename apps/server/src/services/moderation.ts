@@ -25,8 +25,10 @@ export async function autoModerate(content: string): Promise<string | null> {
     const value = result.flagged ? (result.reason ?? "Content flagged by auto-moderation") : "";
     await redis.setex(cacheKey, 300, value); // cache for 5 minutes
     return result.flagged ? value : null;
-  } catch {
-    // If moderation fails, let the message through
+  } catch (err) {
+    // If moderation fails, let the message through but log a warning
+    const { default: logger } = await import("../lib/logger.js");
+    logger.warn({ err }, "Moderation check failed, allowing message through");
     return null;
   }
 }
