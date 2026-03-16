@@ -1,9 +1,13 @@
 type Labels = Record<string, string>;
 
+function escapeLabelValue(v: string): string {
+  return v.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
+}
+
 function labelsToKey(labels: Labels): string {
   return Object.entries(labels)
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([k, v]) => `${k}="${v}"`)
+    .map(([k, v]) => `${k}="${escapeLabelValue(v)}"`)
     .join(",");
 }
 

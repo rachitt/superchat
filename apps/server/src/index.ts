@@ -56,16 +56,14 @@ async function main() {
   // ── HTTP metrics ──
   fastify.addHook("onResponse", async (request, reply) => {
     const duration = reply.elapsedTime / 1000; // ms → seconds
+    const path = request.routeOptions?.url || "unmatched";
     const labels = {
       method: request.method,
-      path: request.routeOptions?.url || request.url,
+      path,
       status_code: String(reply.statusCode),
     };
     httpRequestsTotal.inc(labels);
-    httpRequestDuration.observe(
-      { method: request.method, path: request.routeOptions?.url || request.url },
-      duration
-    );
+    httpRequestDuration.observe({ method: request.method, path }, duration);
   });
 
   // ── Security headers ──
@@ -180,14 +178,18 @@ async function main() {
   });
 
   // ── Graceful shutdown ──
+  let isShuttingDown = false;
   async function shutdown() {
-    fastify.log.info("Graceful shutdown initiated...");
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+
+    logger.info("Graceful shutdown initiated...");
     await fastify.close();
     io.close();
     await closeAllQueues();
     await closeRedis();
     await closeDb();
-    fastify.log.info("Shutdown complete");
+    logger.info("Shutdown complete");
     process.exit(0);
   }
 

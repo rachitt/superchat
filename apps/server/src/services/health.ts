@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { redis } from "../lib/redis.js";
-import { getQueue, type QueueName } from "../workers/queue.js";
+import { tryGetQueue, type QueueName } from "../workers/queue.js";
 
 interface HealthCheck {
   status: "up" | "down";
@@ -54,8 +54,12 @@ async function checkQueues(): Promise<Record<string, QueueHealth>> {
   const results: Record<string, QueueHealth> = {};
 
   for (const name of queueNames) {
+    const queue = tryGetQueue(name);
+    if (!queue) {
+      results[name] = { waiting: -1, active: -1 };
+      continue;
+    }
     try {
-      const queue = getQueue(name);
       const [waiting, active] = await Promise.all([
         queue.getWaitingCount(),
         queue.getActiveCount(),

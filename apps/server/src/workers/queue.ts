@@ -33,6 +33,10 @@ export async function enqueueJob(
   return queue.add(queueName, { ...data, traceId: traceId || randomUUID() }, jobOpts);
 }
 
+export function tryGetQueue(name: QueueName): Queue | undefined {
+  return queues.get(name);
+}
+
 export async function closeAllQueues(): Promise<void> {
   await Promise.all(
     Array.from(queues.values()).map((q) => q.close())

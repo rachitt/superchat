@@ -1,14 +1,18 @@
 import type { Job } from "bullmq";
 import { eq } from "drizzle-orm";
 import { Emitter } from "@socket.io/redis-emitter";
+import Redis from "ioredis";
 import type { GameState, ServerToClientEvents } from "@superchat/shared";
 import { db } from "../../db/index.js";
 import { games, gamePlayers, user as users } from "../../db/schema/index.js";
-import { redis } from "../../lib/redis.js";
 import { getGameEngine } from "../../games/index.js";
 import logger from "../../lib/logger.js";
 
 const log = logger.child({ module: "game-timeout-worker" });
+
+const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
+const emitterRedis = new Redis(REDIS_URL, { maxRetriesPerRequest: null, lazyConnect: true });
+const emitter = new Emitter<ServerToClientEvents>(emitterRedis);
 
 export interface GameTimeoutPayload {
   gameId: string;
@@ -84,7 +88,6 @@ export default async function processGameTimeout(job: Job<GameTimeoutPayload>) {
     .set({ state: result.state })
     .where(eq(games.id, gameId));
 
-  const emitter = new Emitter<ServerToClientEvents>(redis.duplicate());
   const updatedPlayers = await getGamePlayers(gameId);
   emitter.to(`game:${gameId}`).emit("game:state_update", {
     gameId,

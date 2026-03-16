@@ -1,6 +1,7 @@
 import { openai, anthropic, google } from "../lib/ai.js";
 import { moderateContent } from "./ai.js";
 import { redis } from "../lib/redis.js";
+import logger from "../lib/logger.js";
 
 /**
  * Auto-moderate a message. Returns null if the message is clean,
@@ -27,7 +28,6 @@ export async function autoModerate(content: string): Promise<string | null> {
     return result.flagged ? value : null;
   } catch (err) {
     // If moderation fails, let the message through but log a warning
-    const { default: logger } = await import("../lib/logger.js");
     logger.warn({ err }, "Moderation check failed, allowing message through");
     return null;
   }
