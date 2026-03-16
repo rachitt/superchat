@@ -5,6 +5,7 @@ import { sendMessageSchema } from "@superchat/shared";
 import { db } from "../../db/index.js";
 import { messages, user as users, reactions } from "../../db/schema/index.js";
 import { autoModerate } from "../../services/moderation.js";
+import { getQueue } from "../../workers/queue.js";
 
 type IOServer = Server<ClientToServerEvents, ServerToClientEvents>;
 type IOSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -61,6 +62,15 @@ export function registerMessageHandlers(io: IOServer, socket: IOSocket) {
     };
 
     io.to(`channel:${message.channelId}`).emit("message:new", messageData);
+
+    // Enqueue embedding generation for searchable messages
+    if (message.type === "text" && message.content.trim().length >= 5) {
+      getQueue("ai-embeddings").add("embed", {
+        messageId: message.id,
+        channelId: message.channelId,
+        content: message.content,
+      });
+    }
   });
 
   socket.on("message:edit", async (data) => {

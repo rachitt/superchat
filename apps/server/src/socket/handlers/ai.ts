@@ -5,7 +5,10 @@ import { AI_BOT_NAME } from "@superchat/shared";
 import { streamAiChat } from "../../services/ai.js";
 import { db } from "../../db/index.js";
 import { messages, user as users } from "../../db/schema/index.js";
+import { channels } from "../../db/schema/channels.js";
 import { checkAiRateLimit } from "../../lib/rate-limit.js";
+import { buildAiTools } from "../../services/ai-tools.js";
+import { getQueue } from "../../workers/queue.js";
 
 type IOServer = Server<ClientToServerEvents, ServerToClientEvents>;
 type IOSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -34,6 +37,18 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
       .where(eq(users.id, userId));
 
     const userName = author?.name ?? author?.username ?? "User";
+
+    // Look up workspaceId from the channel
+    const [channel] = await db
+      .select({ workspaceId: channels.workspaceId })
+      .from(channels)
+      .where(eq(channels.id, channelId))
+      .limit(1);
+
+    const workspaceId = channel?.workspaceId;
+
+    // Build AI tools with context
+    const aiTools = buildAiTools({ channelId, userId, io });
 
     // Create a placeholder bot message in the database
     const [botMessage] = await db
@@ -69,19 +84,36 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
     const timeout = setTimeout(() => abortController.abort(), STREAM_TIMEOUT_MS);
 
     try {
-      const result = await streamAiChat({ channelId, userMessage: message, userName });
+      const result = await streamAiChat({
+        channelId,
+        userMessage: message,
+        userName,
+        userId,
+        workspaceId,
+        tools: aiTools,
+      });
 
       let fullContent = "";
 
-      for await (const chunk of result.textStream) {
+      for await (const chunk of result.fullStream) {
         if (abortController.signal.aborted) break;
 
-        fullContent += chunk;
-        io.to(`channel:${channelId}`).emit("ai:stream", {
-          channelId,
-          messageId,
-          chunk,
-        });
+        if (chunk.type === "text-delta") {
+          fullContent += chunk.textDelta;
+          io.to(`channel:${channelId}`).emit("ai:stream", {
+            channelId,
+            messageId,
+            chunk: chunk.textDelta,
+          });
+        } else if (chunk.type === "tool-result") {
+          io.to(`channel:${channelId}`).emit("ai:tool_call", {
+            channelId,
+            messageId,
+            toolName: chunk.toolName,
+            args: chunk.args as Record<string, unknown>,
+            result: chunk.result,
+          });
+        }
       }
 
       clearTimeout(timeout);
@@ -112,6 +144,16 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
         messageId,
         content: fullContent,
       });
+
+      // Enqueue memory extraction in the background
+      if (workspaceId && fullContent) {
+        const conversationText = `User (${userName}): ${message}\nAssistant: ${fullContent}`;
+        getQueue("ai-memory").add("extract", {
+          conversationText,
+          userId,
+          workspaceId,
+        });
+      }
     } catch (err) {
       clearTimeout(timeout);
       const errorMessage = err instanceof Error ? err.message : "AI generation failed";
