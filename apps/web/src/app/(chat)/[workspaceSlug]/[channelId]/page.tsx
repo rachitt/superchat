@@ -16,6 +16,20 @@ import { ThreadPanel } from "@/components/chat/thread-panel";
 import { SummaryDialog } from "@/components/ai/summary-dialog";
 import { GamePanel } from "@/components/games/game-panel";
 import { SearchDialog, useSearchShortcut } from "@/components/chat/search-dialog";
+import {
+  Hash,
+  Search,
+  Sparkles,
+  Gamepad2,
+  Users,
+  Pin,
+} from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Separator } from "@/components/ui/separator";
 
 export default function ChannelPage() {
   const params = useParams<{ workspaceSlug: string; channelId: string }>();
@@ -29,24 +43,32 @@ export default function ChannelPage() {
   const pendingOpenGameId = useGameStore((s) => s.pendingOpenGameId);
   const setPendingOpenGameId = useGameStore((s) => s.setPendingOpenGameId);
 
-  // Auto-open game panel when AI creates a game
   useEffect(() => {
     if (pendingOpenGameId) {
       setShowGames(true);
       setPendingOpenGameId(null);
     }
   }, [pendingOpenGameId, setPendingOpenGameId]);
+
   const [showSearch, setShowSearch] = useState(false);
   const openSearch = useCallback(() => setShowSearch(true), []);
   useSearchShortcut(openSearch);
 
-  // Set up AI and game socket listeners
   useAiSocket();
   useGameSocket();
 
   const { data: workspace } = useQuery(
     trpc.workspace.getBySlug.queryOptions({ slug: workspaceSlug })
   );
+
+  // Get channel info from workspace channels list
+  const { data: channels } = useQuery({
+    ...trpc.channel.listByWorkspace.queryOptions({
+      workspaceId: workspace?.id ?? "",
+    }),
+    enabled: !!workspace?.id,
+  });
+  const channel = channels?.find((c) => c.id === channelId);
 
   useEffect(() => {
     setActiveChannel(channelId);
@@ -57,7 +79,7 @@ export default function ChannelPage() {
     };
   }, [channelId, setActiveChannel]);
 
-  const { data } = useQuery({
+  const { data, isLoading: loadingMessages } = useQuery({
     ...trpc.message.list.queryOptions({ channelId }),
     enabled: !!channelId,
   });
@@ -96,51 +118,84 @@ export default function ChannelPage() {
     }
   }, [channelId, summarizeMutation, setSummarizing, setSummary]);
 
+  const channelName = channel?.name ?? "Loading...";
+  const channelDescription = channel?.description;
+
   return (
     <div className="flex h-full">
       <div className="flex flex-1 flex-col">
-        <div className="flex h-12 items-center justify-between border-b border-zinc-800 px-4">
-          <div className="flex items-center">
-            <span className="text-zinc-500 mr-1">#</span>
-            <h2 className="text-sm font-semibold text-zinc-100">
-              {channelId.slice(0, 8)}
+        {/* Channel header */}
+        <header className="flex h-13 shrink-0 items-center justify-between border-b border-border px-4">
+          <div className="flex items-center gap-2 min-w-0">
+            <Hash className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
+            <h2 className="text-[15px] font-semibold text-foreground truncate">
+              {channelName}
             </h2>
+            {channelDescription && (
+              <>
+                <Separator orientation="vertical" className="mx-1 h-4" />
+                <p className="truncate text-xs text-muted-foreground">
+                  {channelDescription}
+                </p>
+              </>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowSearch(true)}
-              className="flex items-center gap-1.5 rounded-md border border-zinc-700 px-2.5 py-1 text-xs text-zinc-400 hover:border-zinc-600 hover:text-zinc-300"
-              title="Search (Cmd+K)"
-            >
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              Search
-            </button>
-            <button
-              onClick={() => setShowSummary(true)}
-              className="rounded-md bg-zinc-800 px-3 py-1 text-xs text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-200"
-              title="Summarize channel with AI"
-            >
-              Summarize
-            </button>
-            <button
-              onClick={() => setShowGames(!showGames)}
-              className={`rounded-md px-2.5 py-1 text-sm transition-colors ${
-                showGames
-                  ? "bg-indigo-600/20 text-indigo-400"
-                  : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
-              }`}
-              title="Games"
-            >
-              🎮
-            </button>
+
+          <div className="flex items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setShowSearch(true)}
+                  className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <Search className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Search</span>
+                  <kbd className="ml-1 hidden rounded border border-border px-1 py-0.5 text-[10px] font-mono text-muted-foreground sm:inline">
+                    ⌘K
+                  </kbd>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Search messages</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setShowSummary(true)}
+                  className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Summarize</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>AI Summary</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setShowGames(!showGames)}
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs transition-colors ${
+                    showGames
+                      ? "bg-primary/15 text-primary"
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  }`}
+                >
+                  <Gamepad2 className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Games</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Games</TooltipContent>
+            </Tooltip>
           </div>
-        </div>
-        <MessageList channelId={channelId} />
+        </header>
+
+        <MessageList channelId={channelId} loading={loadingMessages} />
         <MessageInput channelId={channelId} />
       </div>
+
       {activeThreadId && <ThreadPanel parentId={activeThreadId} channelId={channelId} />}
+
       {showSummary && (
         <SummaryDialog
           onClose={() => setShowSummary(false)}

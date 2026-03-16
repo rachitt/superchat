@@ -6,6 +6,7 @@ import { useTRPC } from "@/lib/trpc";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNotificationStore, type NotificationData } from "@/stores/notification-store";
 import { useChatStore } from "@/stores/chat-store";
+import { AtSign, Reply, UserPlus, Bell, Clock, CheckCheck } from "lucide-react";
 
 function relativeTime(dateStr: string): string {
   const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -18,13 +19,14 @@ function relativeTime(dateStr: string): string {
   return `${days}d ago`;
 }
 
-function typeIcon(type: string): string {
+function TypeIcon({ type }: { type: string }) {
+  const iconClass = "h-3.5 w-3.5";
   switch (type) {
-    case "mention": return "@";
-    case "reply": return "\u21A9";
-    case "invite": return "+";
-    case "reminder": return "\u23F0";
-    default: return "\u2022";
+    case "mention": return <AtSign className={iconClass} />;
+    case "reply": return <Reply className={iconClass} />;
+    case "invite": return <UserPlus className={iconClass} />;
+    case "reminder": return <Clock className={iconClass} />;
+    default: return <Bell className={iconClass} />;
   }
 }
 
@@ -46,7 +48,6 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
     ...trpc.notification.list.queryOptions({ limit: 30 }),
   });
 
-  // Merge server data with real-time store notifications, deduplicating by id
   const notifications = useMemo(() => {
     const serverItems: NotificationData[] = (data?.items ?? []).map((n) => ({
       id: n.id,
@@ -57,7 +58,6 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
       createdAt: typeof n.createdAt === "string" ? n.createdAt : new Date(n.createdAt).toISOString(),
       readAt: n.readAt ? (typeof n.readAt === "string" ? n.readAt : new Date(n.readAt).toISOString()) : null,
     }));
-
     const serverIds = new Set(serverItems.map((n) => n.id));
     const realtimeOnly = storeNotifications.filter((n) => !serverIds.has(n.id));
     return [...realtimeOnly, ...serverItems];
@@ -82,7 +82,6 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
       storeMarkAsRead(notification.id);
       markReadMutation.mutate({ notificationId: notification.id });
     }
-
     const notifData = notification.data;
     if (notifData?.channelId && notifData?.messageId) {
       setHighlightedMessage(notifData.messageId as string);
@@ -94,49 +93,53 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
   return (
     <div
       data-notification-panel
-      className="absolute right-0 top-full z-50 mt-1 w-80 rounded-lg border border-zinc-700 bg-zinc-900 shadow-2xl"
+      className="absolute right-0 top-full z-50 mt-2 w-80 rounded-xl border border-border bg-popover shadow-2xl animate-slide-down"
     >
-      <div className="flex items-center justify-between border-b border-zinc-700 px-3 py-2">
-        <h3 className="text-sm font-semibold text-zinc-100">Notifications</h3>
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
         <button
           onClick={() => markAllReadMutation.mutate()}
-          className="text-xs text-indigo-400 hover:text-indigo-300"
+          className="flex items-center gap-1 text-[11px] font-medium text-primary hover:text-primary/80 transition-colors"
         >
+          <CheckCheck className="h-3 w-3" />
           Mark all read
         </button>
       </div>
 
       <div className="max-h-96 overflow-y-auto">
         {notifications.length === 0 && (
-          <p className="px-3 py-8 text-center text-sm text-zinc-500">
-            No notifications yet
-          </p>
+          <div className="flex flex-col items-center py-10">
+            <Bell className="h-8 w-8 text-muted-foreground/30" />
+            <p className="mt-2 text-sm text-muted-foreground">
+              No notifications yet
+            </p>
+          </div>
         )}
 
         {notifications.map((notification) => (
           <button
             key={notification.id}
             onClick={() => handleNotificationClick(notification)}
-            className={`flex w-full gap-3 px-3 py-2.5 text-left hover:bg-zinc-800 ${
-              !notification.readAt ? "bg-zinc-800/50" : ""
+            className={`flex w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-accent ${
+              !notification.readAt ? "bg-accent/30" : ""
             }`}
           >
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs text-zinc-300">
-              {typeIcon(notification.type)}
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <TypeIcon type={notification.type} />
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="truncate text-sm font-medium text-zinc-200">
+                <span className="truncate text-[13px] font-medium text-foreground">
                   {notification.title}
                 </span>
                 {!notification.readAt && (
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-500" />
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
                 )}
               </div>
-              <p className="mt-0.5 line-clamp-2 text-xs text-zinc-400">
+              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground leading-relaxed">
                 {notification.body}
               </p>
-              <span className="mt-0.5 text-[10px] text-zinc-500">
+              <span className="mt-1 block text-[10px] text-muted-foreground/60">
                 {relativeTime(notification.createdAt)}
               </span>
             </div>

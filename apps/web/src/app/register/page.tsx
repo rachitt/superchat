@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signUp } from "@/lib/auth-client";
+import { MessageSquare, Loader2, AlertCircle } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -18,14 +19,8 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-
     try {
-      const result = await signUp.email({
-        name,
-        username,
-        email,
-        password,
-      });
+      const result = await signUp.email({ name, username, email, password });
       if (result.error) {
         setError(result.error.message ?? "Registration failed");
       } else {
@@ -38,94 +33,60 @@ export default function RegisterPage() {
     }
   };
 
+  const inputClass = "mt-1.5 w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder-muted-foreground/60 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20";
+
   return (
     <div className="flex min-h-screen items-center justify-center">
-      <div className="w-full max-w-sm space-y-6 px-4">
+      <div className="w-full max-w-sm space-y-6 px-4 animate-float-up">
         <div className="text-center">
-          <h1 className="text-2xl font-bold">Create an account</h1>
-          <p className="mt-1 text-sm text-zinc-400">Join SuperChat</p>
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
+            <MessageSquare className="h-6 w-6 text-primary-foreground" />
+          </div>
+          <h1 className="text-2xl font-bold text-foreground">Create an account</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Join SuperChat</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-400">
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
               {error}
             </div>
           )}
 
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-zinc-300">
-              Display Name
-            </label>
-            <input
-              id="name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-              placeholder="John Doe"
-            />
+            <label htmlFor="name" className="block text-sm font-medium text-foreground">Display Name</label>
+            <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required className={inputClass} placeholder="John Doe" />
           </div>
 
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-zinc-300">
-              Username
-            </label>
-            <input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-              placeholder="johndoe"
-            />
+            <label htmlFor="username" className="block text-sm font-medium text-foreground">Username</label>
+            <input id="username" type="text" value={username} onChange={(e) => setUsername(e.target.value)} required className={inputClass} placeholder="johndoe" />
           </div>
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-zinc-300">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-              placeholder="you@example.com"
-            />
+            <label htmlFor="email" className="block text-sm font-medium text-foreground">Email</label>
+            <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className={inputClass} placeholder="you@example.com" />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-zinc-300">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-              placeholder="••••••••"
-            />
+            <label htmlFor="password" className="block text-sm font-medium text-foreground">Password</label>
+            <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} className={inputClass} placeholder="••••••••" />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-500 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-all hover:opacity-90 disabled:opacity-50"
           >
+            {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {loading ? "Creating account..." : "Create account"}
           </button>
         </form>
 
-        <p className="text-center text-sm text-zinc-400">
+        <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link href="/login" className="text-indigo-400 hover:text-indigo-300">
+          <Link href="/login" className="font-medium text-primary hover:text-primary/80 transition-colors">
             Sign in
           </Link>
         </p>

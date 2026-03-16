@@ -1,21 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { WorkspaceSidebar } from "@/components/sidebar/workspace-sidebar";
 import { useTRPC } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AlertCircle } from "lucide-react";
 
 export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const params = useParams<{ workspaceSlug: string }>();
-  const router = useRouter();
   const trpc = useTRPC();
 
   const { data: workspace, isLoading: loadingWorkspace } = useQuery(
     trpc.workspace.getBySlug.queryOptions({ slug: params.workspaceSlug })
   );
 
-  const { data: channels, isLoading: loadingChannels } = useQuery({
+  const { data: channels } = useQuery({
     ...trpc.channel.listByWorkspace.queryOptions({
       workspaceId: workspace?.id ?? "",
     }),
@@ -24,16 +24,34 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
 
   if (loadingWorkspace) {
     return (
-      <div className="flex h-full w-full items-center justify-center">
-        <div className="text-zinc-400">Loading workspace...</div>
+      <div className="flex h-full">
+        {/* Sidebar skeleton */}
+        <div className="flex w-64 flex-col border-r border-border bg-sidebar p-4">
+          <Skeleton className="mb-6 h-8 w-32" />
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-16" />
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-7 w-full rounded-lg" />
+            ))}
+          </div>
+          <div className="mt-auto">
+            <Skeleton className="h-10 w-full rounded-lg" />
+          </div>
+        </div>
+        {/* Main content skeleton */}
+        <div className="flex flex-1 flex-col">
+          <Skeleton className="h-13 w-full border-b border-border" />
+          <div className="flex-1" />
+        </div>
       </div>
     );
   }
 
   if (!workspace) {
     return (
-      <div className="flex h-full w-full items-center justify-center">
-        <div className="text-zinc-400">Workspace not found</div>
+      <div className="flex h-full w-full flex-col items-center justify-center gap-3">
+        <AlertCircle className="h-10 w-10 text-muted-foreground/40" />
+        <p className="text-sm text-muted-foreground">Workspace not found</p>
       </div>
     );
   }

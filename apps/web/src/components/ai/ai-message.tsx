@@ -6,10 +6,12 @@ import remarkGfm from "remark-gfm";
 import { useAiStore } from "@/stores/ai-store";
 import { AI_BOT_NAME } from "@superchat/shared";
 import { ToolCallDisplay } from "./tool-call-display";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Bot } from "lucide-react";
 
 interface AiMessageProps {
   messageId: string;
-  /** Persisted content from the database (used when stream is done) */
   persistedContent: string;
 }
 
@@ -22,70 +24,82 @@ export function AiMessage({ messageId, persistedContent }: AiMessageProps) {
   const markdownComponents = useMemo(
     () => ({
       pre: ({ children, ...props }: React.ComponentProps<"pre">) => (
-        <pre className="my-2 overflow-x-auto rounded-md bg-zinc-900 p-3 text-sm" {...props}>
+        <pre className="my-2.5 overflow-x-auto rounded-lg bg-background/80 p-3.5 text-[13px] font-mono border border-border/50" {...props}>
           {children}
         </pre>
       ),
       code: ({ children, className, ...props }: React.ComponentProps<"code">) => {
         const isInline = !className;
         return isInline ? (
-          <code className="rounded bg-zinc-700 px-1 py-0.5 text-sm text-indigo-300" {...props}>
+          <code className="rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[13px] font-mono text-violet-300" {...props}>
             {children}
           </code>
         ) : (
-          <code className={className} {...props}>
-            {children}
-          </code>
+          <code className={className} {...props}>{children}</code>
         );
       },
       p: ({ children, ...props }: React.ComponentProps<"p">) => (
-        <p className="mb-2 last:mb-0" {...props}>
-          {children}
-        </p>
+        <p className="mb-2 last:mb-0 leading-relaxed" {...props}>{children}</p>
       ),
       ul: ({ children, ...props }: React.ComponentProps<"ul">) => (
-        <ul className="mb-2 ml-4 list-disc last:mb-0" {...props}>
-          {children}
-        </ul>
+        <ul className="mb-2 ml-4 list-disc last:mb-0 marker:text-violet-400/50" {...props}>{children}</ul>
       ),
       ol: ({ children, ...props }: React.ComponentProps<"ol">) => (
-        <ol className="mb-2 ml-4 list-decimal last:mb-0" {...props}>
-          {children}
-        </ol>
+        <ol className="mb-2 ml-4 list-decimal last:mb-0 marker:text-violet-400/50" {...props}>{children}</ol>
       ),
       a: ({ children, ...props }: React.ComponentProps<"a">) => (
-        <a className="text-indigo-400 underline hover:text-indigo-300" target="_blank" rel="noopener noreferrer" {...props}>
+        <a className="text-violet-400 underline decoration-violet-400/30 hover:decoration-violet-400 transition-colors" target="_blank" rel="noopener noreferrer" {...props}>
           {children}
         </a>
+      ),
+      strong: ({ children, ...props }: React.ComponentProps<"strong">) => (
+        <strong className="font-semibold text-foreground" {...props}>{children}</strong>
+      ),
+      blockquote: ({ children, ...props }: React.ComponentProps<"blockquote">) => (
+        <blockquote className="my-2 border-l-2 border-violet-500/40 pl-3 text-muted-foreground italic" {...props}>
+          {children}
+        </blockquote>
       ),
     }),
     []
   );
 
   return (
-    <div className="group relative flex gap-3 px-4 py-1.5">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 text-xs font-bold text-white">
-        AI
-      </div>
+    <div className="group relative flex gap-3 px-5 py-2">
+      {/* Subtle gradient left border */}
+      <div className="absolute left-0 top-2 bottom-2 w-[2px] rounded-full bg-gradient-to-b from-violet-500/60 via-indigo-500/40 to-transparent" />
+
+      <Avatar className="h-9 w-9 shrink-0">
+        <AvatarFallback className="bg-gradient-to-br from-violet-600 to-indigo-600 text-white">
+          <Bot className="h-4 w-4" />
+        </AvatarFallback>
+      </Avatar>
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-2">
-          <span className="text-sm font-semibold text-violet-400">{AI_BOT_NAME}</span>
-          <span className="rounded bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-400">
+        <div className="flex items-center gap-2">
+          <span className="text-[13px] font-semibold text-violet-400">{AI_BOT_NAME}</span>
+          <Badge variant="secondary" className="h-4.5 bg-violet-500/10 px-1.5 text-[10px] font-medium text-violet-400 border-violet-500/20">
             AI
-          </span>
+          </Badge>
         </div>
 
-        <div className="mt-0.5 text-sm text-zinc-300 leading-relaxed">
+        <div className="mt-1 text-[14px] text-secondary-foreground leading-relaxed">
           {content ? (
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
               {content}
             </ReactMarkdown>
           ) : isStreaming ? (
-            <span className="text-zinc-500">Thinking...</span>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <div className="flex gap-1">
+                <span className="typing-dot h-1.5 w-1.5 rounded-full bg-violet-400" />
+                <span className="typing-dot h-1.5 w-1.5 rounded-full bg-violet-400" />
+                <span className="typing-dot h-1.5 w-1.5 rounded-full bg-violet-400" />
+              </div>
+              <span className="text-xs">Thinking...</span>
+            </div>
           ) : null}
-          {isStreaming && (
-            <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse rounded-sm bg-violet-400" />
+          {isStreaming && content && (
+            <span className="ml-0.5 inline-block h-4 w-[3px] rounded-sm bg-violet-400 animate-cursor-blink" />
           )}
         </div>
         <ToolCallDisplay messageId={messageId} />

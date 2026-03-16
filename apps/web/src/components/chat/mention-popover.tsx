@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 
 export interface MentionUser {
   userId: string;
@@ -36,7 +38,7 @@ export function MentionPopover({ users, filter, selectedIndex, onSelect, onClose
   if (filtered.length === 0) return null;
 
   return (
-    <div className="absolute bottom-full left-0 z-50 mb-1 w-64 overflow-hidden rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl">
+    <div className="absolute bottom-full left-0 z-50 mb-1 w-64 overflow-hidden rounded-xl border border-border bg-popover shadow-xl animate-slide-up">
       <div ref={listRef} className="max-h-48 overflow-y-auto py-1">
         {filtered.map((user, i) => (
           <button
@@ -45,22 +47,22 @@ export function MentionPopover({ users, filter, selectedIndex, onSelect, onClose
               e.preventDefault();
               onSelect(user);
             }}
-            className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm ${
+            className={cn(
+              "flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors",
               i === selectedIndex
-                ? "bg-indigo-600/20 text-indigo-300"
-                : "text-zinc-300 hover:bg-zinc-800"
-            }`}
-          >
-            {user.image ? (
-              <img src={user.image} alt="" className="h-5 w-5 rounded-full" />
-            ) : (
-              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-700 text-[10px] font-bold text-zinc-400">
-                {(user.name[0] ?? "?").toUpperCase()}
-              </div>
+                ? "bg-accent text-foreground"
+                : "text-secondary-foreground hover:bg-accent/50"
             )}
+          >
+            <Avatar className="h-6 w-6">
+              <AvatarImage src={user.image ?? undefined} />
+              <AvatarFallback className="bg-muted text-[9px] font-semibold text-muted-foreground">
+                {(user.name[0] ?? "?").toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
             <span className="truncate font-medium">{user.name}</span>
             {user.username && (
-              <span className="truncate text-xs text-zinc-500">@{user.username}</span>
+              <span className="truncate text-xs text-muted-foreground">@{user.username}</span>
             )}
           </button>
         ))}

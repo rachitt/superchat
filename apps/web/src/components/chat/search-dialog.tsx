@@ -5,6 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useTRPC } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
 import { useChatStore } from "@/stores/chat-store";
+import { Search, Loader2, Hash, User } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface SearchDialogProps {
   workspaceId: string;
@@ -22,13 +24,11 @@ export function SearchDialog({ workspaceId, open, onClose }: SearchDialogProps) 
   const trpc = useTRPC();
   const setHighlightedMessage = useChatStore((s) => s.setHighlightedMessage);
 
-  // Debounce search query (300ms)
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), 300);
     return () => clearTimeout(timer);
   }, [query]);
 
-  // Focus input when opened
   useEffect(() => {
     if (open) {
       setTimeout(() => inputRef.current?.focus(), 0);
@@ -38,12 +38,9 @@ export function SearchDialog({ workspaceId, open, onClose }: SearchDialogProps) 
     }
   }, [open]);
 
-  // Close on Escape
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape" && open) {
-        onClose();
-      }
+      if (e.key === "Escape" && open) onClose();
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
@@ -72,114 +69,113 @@ export function SearchDialog({ workspaceId, open, onClose }: SearchDialogProps) 
   const resultCount = data?.results.length ?? 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh]">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Dialog */}
-      <div className="relative w-full max-w-lg rounded-lg border border-zinc-700 bg-zinc-900 shadow-2xl">
+      <div className="relative w-full max-w-xl rounded-xl border border-border bg-popover shadow-2xl animate-float-up">
         {/* Search input */}
-        <div className="flex items-center gap-2 border-b border-zinc-700 px-4 py-3">
-          <svg className="h-4 w-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+        <div className="flex items-center gap-3 border-b border-border px-4 py-3.5">
+          {isFetching ? (
+            <Loader2 className="h-4.5 w-4.5 shrink-0 animate-spin text-primary" />
+          ) : (
+            <Search className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
+          )}
           <input
             ref={inputRef}
             type="text"
             placeholder="Search messages..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="flex-1 bg-transparent text-sm text-zinc-100 placeholder-zinc-500 outline-none"
+            className="flex-1 bg-transparent text-sm text-foreground placeholder-muted-foreground/60 outline-none"
           />
-          <kbd className="hidden rounded border border-zinc-600 px-1.5 py-0.5 text-[10px] text-zinc-400 sm:inline">
+          <kbd className="hidden rounded-md border border-border px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground sm:inline">
             ESC
           </kbd>
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-3 border-b border-zinc-700/50 px-4 py-2">
+        <div className="flex items-center gap-3 border-b border-border/60 px-4 py-2">
           {params.channelId && (
-            <label className="flex items-center gap-1.5 text-xs text-zinc-400">
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={currentChannelOnly}
                 onChange={(e) => setCurrentChannelOnly(e.target.checked)}
-                className="rounded border-zinc-600"
+                className="rounded border-border accent-primary"
               />
               Current channel only
             </label>
           )}
           {debouncedQuery && !isFetching && (
-            <span className="ml-auto text-xs text-zinc-500">
+            <span className="ml-auto text-[11px] text-muted-foreground">
               {resultCount} result{resultCount !== 1 ? "s" : ""}
             </span>
           )}
         </div>
 
         {/* Results */}
-        <div className="max-h-80 overflow-y-auto p-2">
+        <div className="max-h-80 overflow-y-auto p-1.5">
           {!debouncedQuery && (
-            <p className="px-2 py-6 text-center text-sm text-zinc-500">
-              Type to search messages
-            </p>
-          )}
-
-          {debouncedQuery && isFetching && (
-            <p className="px-2 py-6 text-center text-sm text-zinc-500">
-              Searching...
-            </p>
+            <div className="flex flex-col items-center py-10">
+              <Search className="h-8 w-8 text-muted-foreground/30" />
+              <p className="mt-2 text-sm text-muted-foreground">
+                Type to search messages
+              </p>
+            </div>
           )}
 
           {debouncedQuery && !isFetching && data?.results.length === 0 && (
-            <p className="px-2 py-6 text-center text-sm text-zinc-500">
-              No results found
-            </p>
+            <div className="flex flex-col items-center py-10">
+              <p className="text-sm text-muted-foreground">No results found</p>
+              <p className="mt-1 text-xs text-muted-foreground/60">
+                Try a different search term
+              </p>
+            </div>
           )}
 
           {data?.results.map((result) => (
             <button
               key={result.message.id}
               onClick={() => handleResultClick(result.message.channelId, result.message.id)}
-              className="w-full rounded-md px-3 py-2 text-left hover:bg-zinc-800"
+              className="w-full rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-accent"
             >
-              <div className="flex items-center gap-2 text-xs text-zinc-400">
-                <span className="font-medium text-zinc-300">
-                  {result.author.name ?? result.author.username}
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <Avatar className="h-4 w-4">
+                    <AvatarFallback className="bg-primary text-[7px] text-primary-foreground">
+                      {(result.author.name ?? "?").slice(0, 1).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="font-medium text-foreground/80">
+                    {result.author.name ?? result.author.username}
+                  </span>
+                </div>
+                <span className="flex items-center gap-0.5">
+                  <Hash className="h-2.5 w-2.5" />
+                  {result.channel.name}
                 </span>
-                <span>in #{result.channel.name}</span>
-                <span className="ml-auto">
+                <span className="ml-auto font-mono">
                   {new Date(result.message.createdAt).toLocaleDateString()}
                 </span>
               </div>
               {"headline" in result && result.headline ? (
                 <p
-                  className="search-headline mt-1 line-clamp-2 text-sm text-zinc-200"
+                  className="search-headline mt-1.5 line-clamp-2 text-[13px] text-secondary-foreground"
                   dangerouslySetInnerHTML={{ __html: result.headline as string }}
                 />
               ) : (
-                <p className="mt-1 line-clamp-2 text-sm text-zinc-200">
+                <p className="mt-1.5 line-clamp-2 text-[13px] text-secondary-foreground">
                   {result.message.content}
                 </p>
               )}
             </button>
           ))}
         </div>
-
-        <style>{`
-          .search-headline mark,
-          .search-headline b {
-            background-color: rgba(99, 102, 241, 0.3);
-            color: #c7d2fe;
-            border-radius: 2px;
-            padding: 0 2px;
-          }
-        `}</style>
       </div>
     </div>
   );
 }
 
-/** Hook to open search with Cmd+K / Ctrl+K */
 export function useSearchShortcut(onOpen: () => void) {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {

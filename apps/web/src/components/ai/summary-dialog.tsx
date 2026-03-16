@@ -4,6 +4,8 @@ import { useState, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useAiStore } from "@/stores/ai-store";
+import { Sparkles, X, Copy, Check, Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const MESSAGE_COUNT_OPTIONS = [10, 25, 50, 100] as const;
 
@@ -26,56 +28,60 @@ export function SummaryDialog({ onClose, onSummarize }: SummaryDialogProps) {
   }, [summary]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="mx-4 w-full max-w-lg rounded-lg border border-zinc-700 bg-zinc-900 p-6 shadow-xl"
+        className="mx-4 w-full max-w-lg rounded-xl border border-border bg-popover p-6 shadow-2xl animate-float-up"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-zinc-100">Channel Summary</h3>
+        <div className="mb-5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            <h3 className="text-lg font-semibold text-foreground">Channel Summary</h3>
+          </div>
           <button
             onClick={onClose}
-            className="text-zinc-500 hover:text-zinc-300"
+            className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
-            &times;
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="mb-4 flex items-center gap-3">
-          <label className="text-sm text-zinc-400">Summarize last</label>
+        <div className="mb-5 flex items-center gap-3">
+          <label className="text-sm text-muted-foreground">Summarize last</label>
           <select
             value={messageCount}
             onChange={(e) => setMessageCount(Number(e.target.value))}
-            className="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-sm text-zinc-300 outline-none focus:border-indigo-500"
+            className="rounded-lg border border-border bg-input px-2.5 py-1.5 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
           >
             {MESSAGE_COUNT_OPTIONS.map((n) => (
-              <option key={n} value={n}>
-                {n} messages
-              </option>
+              <option key={n} value={n}>{n} messages</option>
             ))}
           </select>
           <button
             onClick={() => onSummarize(messageCount)}
             disabled={isSummarizing}
-            className="rounded-md bg-indigo-600 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-indigo-500 disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground transition-all hover:opacity-90 disabled:opacity-50"
           >
+            {isSummarizing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {isSummarizing ? "Summarizing..." : "Generate"}
           </button>
         </div>
 
-        <div className="max-h-80 overflow-y-auto text-sm text-zinc-300 leading-relaxed">
+        <div className="max-h-80 overflow-y-auto rounded-lg border border-border bg-background/50 p-4 text-sm text-secondary-foreground leading-relaxed">
           {isSummarizing ? (
             <div className="space-y-3">
-              <div className="h-4 w-full animate-pulse rounded bg-zinc-800" />
-              <div className="h-4 w-5/6 animate-pulse rounded bg-zinc-800" />
-              <div className="h-4 w-4/6 animate-pulse rounded bg-zinc-800" />
-              <div className="h-4 w-full animate-pulse rounded bg-zinc-800" />
-              <div className="h-4 w-3/6 animate-pulse rounded bg-zinc-800" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-4 w-4/6" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/6" />
             </div>
           ) : summary ? (
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{summary}</ReactMarkdown>
           ) : (
-            <p className="text-zinc-500">Select a message count and click Generate to create a summary.</p>
+            <p className="text-muted-foreground">
+              Select a message count and click Generate to create a summary.
+            </p>
           )}
         </div>
 
@@ -83,14 +89,15 @@ export function SummaryDialog({ onClose, onSummarize }: SummaryDialogProps) {
           {summary && !isSummarizing && (
             <button
               onClick={handleCopy}
-              className="rounded-md bg-zinc-800 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-700"
+              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
-              {copied ? "Copied!" : "Copy to clipboard"}
+              {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+              {copied ? "Copied!" : "Copy"}
             </button>
           )}
           <button
             onClick={onClose}
-            className="rounded-md bg-zinc-800 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-700"
+            className="rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             Close
           </button>
