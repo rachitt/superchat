@@ -48,25 +48,57 @@ async function getChannelContext(channelId: string, limit: number = AI_MAX_CONTE
 }
 
 /**
+ * Options for streaming an AI chat response.
+ */
+export interface StreamAiChatOptions {
+  channelId: string;
+  userMessage: string;
+  userName: string;
+  /** Override the system prompt (e.g. from workspace settings) */
+  systemPrompt?: string;
+  /** Additional context messages to prepend (e.g. from RAG) */
+  extraContext?: ChannelMessage[];
+  /** AI SDK tools to pass to streamText */
+  tools?: Record<string, any>;
+  /** Max output tokens (default 1500) */
+  maxOutputTokens?: number;
+}
+
+/**
  * Stream an AI response for a chat message. Returns an async iterable of text chunks.
  */
-export async function streamAiChat(channelId: string, userMessage: string, userName: string): Promise<any> {
+export async function streamAiChat(opts: StreamAiChatOptions): Promise<any> {
+  const { channelId, userMessage, userName, systemPrompt, extraContext, tools, maxOutputTokens = 1500 } = opts;
   const context = await getChannelContext(channelId);
+
+  // Merge extra context (e.g. RAG results) with recent messages, deduplicating
+  const allContext = extraContext ? deduplicateContext([...extraContext, ...context]) : context;
 
   const result = streamText({
     model: getModel(),
-    system: SYSTEM_PROMPT,
+    system: systemPrompt ?? SYSTEM_PROMPT,
     messages: [
-      ...context.map((m) => ({
+      ...allContext.map((m) => ({
         role: m.role,
         content: m.name ? `[${m.name}]: ${m.content}` : m.content,
       })),
       { role: "user" as const, content: `[${userName}]: ${userMessage}` },
     ],
-    maxOutputTokens: 1500,
+    maxOutputTokens,
+    ...(tools ? { tools } : {}),
   });
 
   return result;
+}
+
+/** Deduplicate context messages by content */
+function deduplicateContext(msgs: ChannelMessage[]): ChannelMessage[] {
+  const seen = new Set<string>();
+  return msgs.filter((m) => {
+    if (seen.has(m.content)) return false;
+    seen.add(m.content);
+    return true;
+  });
 }
 
 /**

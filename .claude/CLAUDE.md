@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git Conventions
+
+- Write simple, short one-liner commit messages. No multi-line descriptions, no bullet points, no Co-Authored-By footer.
+
 ## Project Overview
 
 SuperChat is a production-grade chat application with AI features, games, and "Living Messages" (messages that evolve over time). Monorepo managed with Turborepo + pnpm. Target: thousands to millions of users.

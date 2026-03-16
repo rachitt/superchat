@@ -69,7 +69,7 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
     const timeout = setTimeout(() => abortController.abort(), STREAM_TIMEOUT_MS);
 
     try {
-      const result = await streamAiChat(channelId, message, userName);
+      const result = await streamAiChat({ channelId, userMessage: message, userName });
 
       let fullContent = "";
 
