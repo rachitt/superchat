@@ -35,11 +35,12 @@ export const searchRouter = router({
       }
 
       const tsquery = sql`plainto_tsquery('english', ${input.query})`;
+      const likePattern = `%${input.query}%`;
 
       const conditions = [
         eq(channels.workspaceId, input.workspaceId),
         isNull(messages.deletedAt),
-        sql`${messages.searchVector} @@ ${tsquery}`,
+        sql`(${messages.searchVector} @@ ${tsquery} OR ${messages.content} ILIKE ${likePattern})`,
       ];
 
       if (input.channelId) {
@@ -64,13 +65,13 @@ export const searchRouter = router({
             name: channels.name,
           },
           headline: sql<string>`ts_headline('english', ${messages.content}, ${tsquery})`.as("headline"),
-          rank: sql<number>`ts_rank(${messages.searchVector}, ${tsquery})`.as("rank"),
+          rank: sql<number>`COALESCE(ts_rank(${messages.searchVector}, ${tsquery}), 0)`.as("rank"),
         })
         .from(messages)
         .innerJoin(users, eq(users.id, messages.authorId))
         .innerJoin(channels, eq(channels.id, messages.channelId))
         .where(and(...conditions))
-        .orderBy(sql`ts_rank(${messages.searchVector}, ${tsquery}) DESC`)
+        .orderBy(sql`COALESCE(ts_rank(${messages.searchVector}, ${tsquery}), 0) DESC`)
         .limit(input.limit);
 
       return { results };
