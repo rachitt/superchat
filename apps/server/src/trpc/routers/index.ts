@@ -9,6 +9,7 @@ import { gameRouter } from "./game.js";
 import { searchRouter } from "./search.js";
 import { notificationRouter } from "./notification.js";
 import { memberRouter } from "./member.js";
+import { dmRouter } from "./dm.js";
 
 export const appRouter = router({
   user: userRouter,
@@ -21,6 +22,7 @@ export const appRouter = router({
   search: searchRouter,
   notification: notificationRouter,
   member: memberRouter,
+  dm: dmRouter,
 });
 
 export type AppRouter = typeof appRouter;

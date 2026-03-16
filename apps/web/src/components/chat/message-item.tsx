@@ -9,6 +9,7 @@ import { usePresenceStore } from "@/stores/presence-store";
 import { useSession } from "@/lib/auth-client";
 import { useTRPC } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
+import { useParams, useRouter } from "next/navigation";
 import { SmartReplyBar } from "../ai/smart-reply-bar";
 import { OnlineIndicator } from "../ui/online-indicator";
 import { PollWidget } from "../living/poll-widget";
@@ -66,6 +67,8 @@ function useCountdown(expiresAt: string | null | undefined): { remaining: string
 
 export function MessageItem({ message, showThread = true, highlighted = false }: MessageItemProps) {
   const { data: session } = useSession();
+  const router = useRouter();
+  const params = useParams<{ workspaceSlug: string }>();
   const setActiveThread = useChatStore((s) => s.setActiveThread);
   const reactions = useChatStore((s) => s.reactions.get(message.id)) ?? EMPTY_REACTIONS;
   const smartReplies = useAiStore((s) => s.smartReplies.get(message.id));
@@ -161,7 +164,14 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
         `}</style>
       )}
       <div className="relative shrink-0">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-xs font-medium text-white">
+        <button
+          onClick={() => {
+            if (!isBot && !isPoll && message.author?.id) {
+              router.push(`/${params.workspaceSlug}/profile/${message.author.id}`);
+            }
+          }}
+          className={`flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-xs font-medium text-white ${!isBot && !isPoll ? "cursor-pointer hover:opacity-80" : ""}`}
+        >
           {message.author?.image ? (
             <img
               src={message.author.image}
@@ -171,7 +181,7 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
           ) : (
             initials
           )}
-        </div>
+        </button>
         {authorPresence && (
           <OnlineIndicator
             status={authorPresence.status}
@@ -182,7 +192,16 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
 
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
-          <span className="text-sm font-semibold text-zinc-100">{displayName}</span>
+          <button
+            onClick={() => {
+              if (!isBot && !isPoll && message.author?.id) {
+                router.push(`/${params.workspaceSlug}/profile/${message.author.id}`);
+              }
+            }}
+            className={`text-sm font-semibold text-zinc-100 ${!isBot && !isPoll ? "hover:text-indigo-300 hover:underline" : ""}`}
+          >
+            {displayName}
+          </button>
           {message.author?.username && (
             <span className="text-xs text-zinc-500">@{message.author.username}</span>
           )}
