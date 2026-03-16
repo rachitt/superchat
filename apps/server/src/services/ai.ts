@@ -204,6 +204,41 @@ export async function summarizeChannel(channelId: string, messageCount: number =
 }
 
 /**
+ * Summarize a thread (all replies to a parent message).
+ */
+export async function summarizeThread(parentId: string): Promise<string> {
+  const threadMessages = await db
+    .select({
+      content: messages.content,
+      type: messages.type,
+      username: users.username,
+      displayName: users.name,
+    })
+    .from(messages)
+    .innerJoin(users, eq(users.id, messages.authorId))
+    .where(and(eq(messages.parentId, parentId), isNull(messages.deletedAt)))
+    .orderBy(messages.createdAt);
+
+  if (threadMessages.length < 2) {
+    return "Not enough messages in this thread to summarize.";
+  }
+
+  const context = threadMessages.map((msg) => {
+    const name = msg.displayName ?? msg.username ?? "User";
+    return `${name}: ${msg.content}`;
+  });
+
+  const { text } = await generateText({
+    model: getModel(),
+    system: "You are a concise summarizer. Summarize chat thread conversations into key points, decisions, and action items.",
+    prompt: `Summarize this thread:\n\n${context.join("\n")}`,
+    maxOutputTokens: 800,
+  });
+
+  return text;
+}
+
+/**
  * Check content for moderation issues. Returns null if clean, or a reason string if flagged.
  */
 export async function moderateContent(content: string): Promise<{ flagged: boolean; reason: string | null }> {

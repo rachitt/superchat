@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc.js";
 import { aiSummarizeSchema, aiSmartReplySchema } from "@superchat/shared";
-import { generateSmartReplies, summarizeChannel, moderateContent } from "../../services/ai.js";
+import { generateSmartReplies, summarizeChannel, summarizeThread, moderateContent } from "../../services/ai.js";
 import { checkAiRateLimit } from "../../lib/rate-limit.js";
 
 async function checkRateLimit(userId: string) {
@@ -30,6 +30,14 @@ export const aiRouter = router({
       await checkRateLimit(ctx.userId);
       const replies = await generateSmartReplies(input.channelId, input.messageId);
       return { replies };
+    }),
+
+  summarizeThread: protectedProcedure
+    .input(z.object({ parentId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await checkRateLimit(ctx.userId);
+      const summary = await summarizeThread(input.parentId);
+      return { summary };
     }),
 
   moderate: protectedProcedure

@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useAiStore } from "@/stores/ai-store";
 import { AI_BOT_NAME } from "@superchat/shared";
+import { ToolCallDisplay } from "./tool-call-display";
 
 interface AiMessageProps {
   messageId: string;
@@ -87,6 +88,7 @@ export function AiMessage({ messageId, persistedContent }: AiMessageProps) {
             <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse rounded-sm bg-violet-400" />
           )}
         </div>
+        <ToolCallDisplay messageId={messageId} />
       </div>
     </div>
   );

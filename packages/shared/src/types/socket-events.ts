@@ -54,6 +54,8 @@ export interface AiStreamData {
   messageId: string;
   /** Incremental text chunk */
   chunk: string;
+  /** Thread parent, if the AI response is in a thread */
+  parentId?: string | null;
 }
 
 export interface AiStreamDone {
@@ -61,6 +63,8 @@ export interface AiStreamDone {
   messageId: string;
   /** Full completed content */
   content: string;
+  /** Thread parent, if the AI response is in a thread */
+  parentId?: string | null;
 }
 
 // ── Client → Server events ──

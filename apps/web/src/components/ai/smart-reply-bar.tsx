@@ -6,13 +6,12 @@ import { getSocket } from "@/lib/socket";
 interface SmartReplyBarProps {
   channelId: string;
   messageId: string;
+  isLoading?: boolean;
 }
 
-export function SmartReplyBar({ channelId, messageId }: SmartReplyBarProps) {
+export function SmartReplyBar({ channelId, messageId, isLoading }: SmartReplyBarProps) {
   const replies = useAiStore((s) => s.smartReplies.get(messageId));
   const clearSmartReplies = useAiStore((s) => s.clearSmartReplies);
-
-  if (!replies || replies.length === 0) return null;
 
   const handleReply = (reply: string) => {
     const socket = getSocket();
@@ -23,8 +22,25 @@ export function SmartReplyBar({ channelId, messageId }: SmartReplyBarProps) {
     clearSmartReplies(messageId);
   };
 
+  // Loading skeleton
+  if (isLoading) {
+    return (
+      <div className="mb-2 flex gap-2">
+        <span className="self-center text-xs text-zinc-500">Quick replies:</span>
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="h-6 w-20 animate-pulse rounded-full bg-zinc-800"
+          />
+        ))}
+      </div>
+    );
+  }
+
+  if (!replies || replies.length === 0) return null;
+
   return (
-    <div className="mt-2 flex flex-wrap gap-2">
+    <div className="mb-2 flex flex-wrap gap-2">
       <span className="self-center text-xs text-zinc-500">Quick replies:</span>
       {replies.map((reply, i) => (
         <button

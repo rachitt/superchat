@@ -70,12 +70,11 @@ export default function ChannelPage() {
     trpc.ai.summarize.mutationOptions()
   );
 
-  const handleSummarize = useCallback(async () => {
-    setShowSummary(true);
+  const handleSummarize = useCallback(async (messageCount: number = 50) => {
     setSummarizing(true);
     setSummary(null);
     try {
-      const result = await summarizeMutation.mutateAsync({ channelId });
+      const result = await summarizeMutation.mutateAsync({ channelId, messageCount });
       setSummary(result.summary);
     } catch {
       setSummary("Failed to generate summary. Please try again.");
@@ -106,7 +105,7 @@ export default function ChannelPage() {
               Search
             </button>
             <button
-              onClick={handleSummarize}
+              onClick={() => setShowSummary(true)}
               className="rounded-md bg-zinc-800 px-3 py-1 text-xs text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-200"
               title="Summarize channel with AI"
             >
@@ -129,7 +128,13 @@ export default function ChannelPage() {
         <MessageInput channelId={channelId} />
       </div>
       {activeThreadId && <ThreadPanel parentId={activeThreadId} channelId={channelId} />}
-      {showSummary && <SummaryDialog onClose={() => setShowSummary(false)} />}
+      {showSummary && (
+        <SummaryDialog
+          channelId={channelId}
+          onClose={() => setShowSummary(false)}
+          onSummarize={handleSummarize}
+        />
+      )}
       {showGames && workspace?.id && (
         <GamePanel
           channelId={channelId}

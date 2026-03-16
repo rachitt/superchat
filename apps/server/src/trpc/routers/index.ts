@@ -7,6 +7,7 @@ import { uploadRouter } from "./upload.js";
 import { aiRouter } from "./ai.js";
 import { gameRouter } from "./game.js";
 import { searchRouter } from "./search.js";
+import { memberRouter } from "./member.js";
 
 export const appRouter = router({
   user: userRouter,
@@ -17,6 +18,7 @@ export const appRouter = router({
   ai: aiRouter,
   game: gameRouter,
   search: searchRouter,
+  member: memberRouter,
 });
 
 export type AppRouter = typeof appRouter;

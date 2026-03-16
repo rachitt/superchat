@@ -1,5 +1,5 @@
 import type { Server, Socket } from "socket.io";
-import { eq } from "drizzle-orm";
+import { eq, and, desc, isNull } from "drizzle-orm";
 import type { ClientToServerEvents, ServerToClientEvents } from "@superchat/shared";
 import { AI_BOT_NAME } from "@superchat/shared";
 import { streamAiChat } from "../../services/ai.js";
@@ -50,6 +50,28 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
     // Build AI tools with context
     const aiTools = buildAiTools({ channelId, userId, io });
 
+    // Determine thread parentId:
+    // If the caller already specified a parentId (continuing a thread), use it.
+    // Otherwise, find the user's message that triggered this AI chat to auto-thread.
+    let threadParentId = parentId ?? null;
+    if (!threadParentId) {
+      // Find the most recent user message in this channel to use as thread parent
+      const [userMsg] = await db
+        .select({ id: messages.id })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.channelId, channelId),
+            eq(messages.authorId, userId),
+            eq(messages.type, "text"),
+            isNull(messages.deletedAt)
+          )
+        )
+        .orderBy(desc(messages.createdAt))
+        .limit(1);
+      if (userMsg) threadParentId = userMsg.id;
+    }
+
     // Create a placeholder bot message in the database
     const [botMessage] = await db
       .insert(messages)
@@ -58,7 +80,7 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
         authorId: userId, // attributed to the asking user but type=system marks it as bot
         type: "system",
         content: "", // will be updated when streaming completes
-        parentId: parentId ?? null,
+        parentId: threadParentId,
       })
       .returning();
 
@@ -71,7 +93,7 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
       authorId: userId,
       type: "system",
       content: "",
-      parentId: parentId ?? null,
+      parentId: threadParentId,
       createdAt: botMessage.createdAt.toISOString(),
     });
 
@@ -104,6 +126,7 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
             channelId,
             messageId,
             chunk: chunk.textDelta,
+            parentId: threadParentId,
           });
         } else if (chunk.type === "tool-result") {
           io.to(`channel:${channelId}`).emit("ai:tool_call", {
@@ -143,6 +166,7 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
         channelId,
         messageId,
         content: fullContent,
+        parentId: threadParentId,
       });
 
       // Enqueue memory extraction in the background
