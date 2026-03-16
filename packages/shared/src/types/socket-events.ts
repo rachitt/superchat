@@ -1,4 +1,13 @@
 import type { MessageType } from "../constants";
+import type {
+  GameData,
+  GamePlayerData,
+  GameState,
+  GameAction,
+  GameCreatedEvent,
+  GameStateUpdate,
+  GameFinishedEvent,
+} from "./game";
 
 // ── Data shapes ──
 
@@ -56,6 +65,10 @@ export interface ClientToServerEvents {
   "channel:leave": (data: { channelId: string }) => void;
   "presence:update": (data: { status: "online" | "away" }) => void;
   "living:interact": (data: LivingInteraction) => void;
+  "game:join": (data: { gameId: string }) => void;
+  "game:leave": (data: { gameId: string }) => void;
+  "game:start": (data: { gameId: string }) => void;
+  "game:action": (data: GameAction) => void;
 }
 
 // ── Server → Client events ──
@@ -69,5 +82,12 @@ export interface ServerToClientEvents {
   "presence:changed": (data: PresenceData) => void;
   "channel:updated": (data: { channelId: string }) => void;
   "living:update": (data: { messageId: string; payload: Record<string, unknown>; version: number }) => void;
+  "game:created": (data: GameCreatedEvent) => void;
+  "game:player_joined": (data: { gameId: string; player: GamePlayerData }) => void;
+  "game:player_left": (data: { gameId: string; userId: string }) => void;
+  "game:started": (data: GameStateUpdate) => void;
+  "game:state_update": (data: GameStateUpdate) => void;
+  "game:finished": (data: GameFinishedEvent) => void;
+  "game:error": (data: { gameId: string; message: string }) => void;
   "error": (data: { message: string; code?: string }) => void;
 }

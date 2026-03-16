@@ -63,12 +63,22 @@ async function main() {
   });
 
   // ── Socket.IO ──
+  const ioOptions: Record<string, unknown> = {
+    cors: { origin: FRONTEND_URL, credentials: true },
+  };
+
+  // Only use Redis adapter if Redis is available
+  try {
+    await pubRedis.ping();
+    ioOptions.adapter = createAdapter(pubRedis, subRedis);
+    console.log("Socket.IO using Redis adapter");
+  } catch {
+    console.log("Socket.IO using in-memory adapter (Redis unavailable)");
+  }
+
   const io = new Server<ClientToServerEvents, ServerToClientEvents>(
     fastify.server,
-    {
-      cors: { origin: FRONTEND_URL, credentials: true },
-      adapter: createAdapter(pubRedis, subRedis),
-    }
+    ioOptions as any
   );
 
   setupSocketHandlers(io, auth);

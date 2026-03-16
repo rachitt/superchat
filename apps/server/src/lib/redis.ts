@@ -1,13 +1,18 @@
 import Redis from "ioredis";
 
-export const redis = new Redis(process.env.REDIS_URL!, {
-  maxRetriesPerRequest: null,
-});
+const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 
-export const pubRedis = new Redis(process.env.REDIS_URL!, {
-  maxRetriesPerRequest: null,
-});
+function createRedisClient(): Redis {
+  const client = new Redis(REDIS_URL, {
+    maxRetriesPerRequest: null,
+    lazyConnect: true,
+  });
+  client.on("error", () => {
+    // Suppress connection errors in dev when Redis is unavailable
+  });
+  return client;
+}
 
-export const subRedis = new Redis(process.env.REDIS_URL!, {
-  maxRetriesPerRequest: null,
-});
+export const redis = createRedisClient();
+export const pubRedis = createRedisClient();
+export const subRedis = createRedisClient();
