@@ -11,6 +11,7 @@ import { usePresenceStore } from "@/stores/presence-store";
 import { useSession } from "@/lib/auth-client";
 import { useTRPC } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
+import { useParams, useRouter } from "next/navigation";
 import { SmartReplyBar } from "../ai/smart-reply-bar";
 import { OnlineIndicator } from "../ui/online-indicator";
 import { PollWidget } from "../living/poll-widget";
@@ -121,6 +122,8 @@ const markdownComponents = {
 
 export function MessageItem({ message, showThread = true, highlighted = false }: MessageItemProps) {
   const { data: session } = useSession();
+  const router = useRouter();
+  const params = useParams<{ workspaceSlug: string }>();
   const setActiveThread = useChatStore((s) => s.setActiveThread);
   const reactions = useChatStore((s) => s.reactions.get(message.id)) ?? EMPTY_REACTIONS;
   const smartReplies = useAiStore((s) => s.smartReplies.get(message.id));
@@ -198,17 +201,26 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
     >
       {/* Avatar */}
       <div className="relative mt-0.5 shrink-0">
-        <Avatar className="h-9 w-9">
-          <AvatarImage src={message.author?.image ?? undefined} />
-          <AvatarFallback className={cn(
-            "text-[11px] font-semibold",
-            isBot
-              ? "bg-gradient-to-br from-violet-600 to-indigo-600 text-white"
-              : "bg-primary text-primary-foreground"
-          )}>
-            {initials}
-          </AvatarFallback>
-        </Avatar>
+        <button
+          onClick={() => {
+            if (!isBot && !isPoll && message.author?.id) {
+              router.push(`/${params.workspaceSlug}/profile/${message.author.id}`);
+            }
+          }}
+          className={cn(!isBot && !isPoll && "cursor-pointer hover:opacity-80")}
+        >
+          <Avatar className="h-9 w-9">
+            <AvatarImage src={message.author?.image ?? undefined} />
+            <AvatarFallback className={cn(
+              "text-[11px] font-semibold",
+              isBot
+                ? "bg-gradient-to-br from-violet-600 to-indigo-600 text-white"
+                : "bg-primary text-primary-foreground"
+            )}>
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+        </button>
         {authorPresence && (
           <OnlineIndicator
             status={authorPresence.status}
@@ -220,7 +232,19 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
       {/* Content */}
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
-          <span className="text-[13px] font-semibold text-foreground">{displayName}</span>
+          <button
+            onClick={() => {
+              if (!isBot && !isPoll && message.author?.id) {
+                router.push(`/${params.workspaceSlug}/profile/${message.author.id}`);
+              }
+            }}
+            className={cn(
+              "text-[13px] font-semibold text-foreground",
+              !isBot && !isPoll && "hover:text-primary hover:underline"
+            )}
+          >
+            {displayName}
+          </button>
           {message.author?.username && (
             <span className="text-[11px] text-muted-foreground">@{message.author.username}</span>
           )}

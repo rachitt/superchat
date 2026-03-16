@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useSession, signOut } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import {
   ChevronDown,
   Plus,
@@ -13,6 +13,7 @@ import {
   Bell,
 } from "lucide-react";
 import { ChannelList } from "./channel-list";
+import { DmList } from "./dm-list";
 import { CreateChannelDialog } from "./create-channel-dialog";
 import { NotificationBell } from "../notifications/notification-bell";
 import { BotSettingsDialog } from "./bot-settings-dialog";
@@ -40,6 +41,7 @@ interface WorkspaceSidebarProps {
 export function WorkspaceSidebar({ workspaceId, workspaceName, channels }: WorkspaceSidebarProps) {
   const { data: session } = useSession();
   const router = useRouter();
+  const params = useParams<{ workspaceSlug: string }>();
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [showBotSettings, setShowBotSettings] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -116,18 +118,20 @@ export function WorkspaceSidebar({ workspaceId, workspaceName, channels }: Works
               <ChannelList channels={regularChannels} />
             </div>
 
+            <Separator className="mx-3 my-3" />
+
+            {/* DM section */}
+            <DmList workspaceId={workspaceId} />
+
             {dmChannels.length > 0 && (
-              <>
-                <Separator className="mx-3 my-3" />
-                <div className="mb-1">
-                  <div className="flex items-center px-3 py-1">
-                    <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-                      Direct Messages
-                    </span>
-                  </div>
-                  <ChannelList channels={dmChannels} />
+              <div className="mb-1">
+                <div className="flex items-center px-3 py-1">
+                  <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                    Direct Messages
+                  </span>
                 </div>
-              </>
+                <ChannelList channels={dmChannels} />
+              </div>
             )}
           </>
         ) : (
@@ -186,6 +190,23 @@ export function WorkspaceSidebar({ workspaceId, workspaceName, channels }: Works
                 <p className="text-sm font-medium">{session?.user?.name}</p>
                 <p className="text-xs text-muted-foreground">{session?.user?.email}</p>
               </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  if (session?.user?.id) {
+                    router.push(`/${params.workspaceSlug}/profile/${session.user.id}`);
+                  }
+                }}
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => router.push(`/${params.workspaceSlug}/settings`)}
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={async () => {

@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { eq } from "drizzle-orm";
+import { randomUUID } from "crypto";
 import { router, protectedProcedure } from "../trpc.js";
 import { user as users } from "../../db/schema/index.js";
+import { getUploadUrl, getPublicUrl } from "../../lib/storage.js";
 
 export const userRouter = router({
   me: protectedProcedure.query(async ({ ctx }) => {
@@ -32,7 +34,7 @@ export const userRouter = router({
     }),
 
   getById: protectedProcedure
-    .input(z.object({ userId: z.string().uuid() }))
+    .input(z.object({ userId: z.string() }))
     .query(async ({ ctx, input }) => {
       const [u] = await ctx.db
         .select({
@@ -44,10 +46,25 @@ export const userRouter = router({
           bio: users.bio,
           xp: users.xp,
           level: users.level,
+          createdAt: users.createdAt,
         })
         .from(users)
         .where(eq(users.id, input.userId))
         .limit(1);
       return u ?? null;
+    }),
+
+  getAvatarUploadUrl: protectedProcedure
+    .input(
+      z.object({
+        fileType: z.string().regex(/^image\/(jpeg|png|gif|webp)$/),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const ext = input.fileType.split("/")[1];
+      const key = `avatars/${ctx.userId}/${randomUUID()}.${ext}`;
+      const uploadUrl = await getUploadUrl(key, input.fileType);
+      const publicUrl = getPublicUrl(key);
+      return { uploadUrl, publicUrl, key };
     }),
 });
