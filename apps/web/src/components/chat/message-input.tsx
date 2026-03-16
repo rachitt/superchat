@@ -122,9 +122,16 @@ export function MessageInput({ channelId }: MessageInputProps) {
       const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
 
       if (mentionMatch) {
-        setMentionOpen(true);
-        setMentionFilter(mentionMatch[1]);
-        setMentionIndex(0);
+        // Don't show mention popover when typing @SuperBot — it's the AI trigger
+        const isAiMention = mentionMatch[1].length > 0 &&
+          AI_BOT_NAME.toLowerCase() === mentionMatch[1].toLowerCase();
+        if (isAiMention) {
+          setMentionOpen(false);
+        } else {
+          setMentionOpen(true);
+          setMentionFilter(mentionMatch[1]);
+          setMentionIndex(0);
+        }
       } else {
         setMentionOpen(false);
       }

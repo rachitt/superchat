@@ -91,14 +91,10 @@ export async function streamAiChat(opts: StreamAiChatOptions): Promise<any> {
   // Resolve system prompt: explicit override > workspace prompt > default
   let finalSystemPrompt = systemPrompt ?? (workspaceId ? await getSystemPrompt(workspaceId) : await getSystemPrompt("__default__"));
 
-  // Append tool descriptions to system prompt
-  finalSystemPrompt += `\n\nYou have access to tools that let you take actions:
-- createPoll: Create a poll for users to vote on
-- startGame: Start a game (trivia, wordle, tic_tac_toe, cards)
-- searchMessages: Search channel message history
-- pinMessage: Pin or unpin a message
-- getCurrentTime: Get the current date/time
-Use tools when the user asks you to perform these actions.`;
+  // Instruct the model to use tools rather than describe actions
+  if (tools) {
+    finalSystemPrompt += `\n\nIMPORTANT: When the user asks you to create a poll, start a game, search messages, pin a message, or get the time — you MUST call the appropriate tool. Do NOT describe what you would do or say "I've created a poll" without actually calling the tool. Always use tool calls for actions. After calling a tool, ALWAYS respond with a brief, friendly message telling the user what you did (e.g. "Here's your poll!" or "It's currently 3:45 PM.").`;
+  }
 
   // Load user memories into system prompt
   if (userId && workspaceId) {
@@ -115,12 +111,12 @@ Use tools when the user asks you to perform these actions.`;
     messages: [
       ...mergedContext.map((m) => ({
         role: m.role,
-        content: m.name ? `[${m.name}]: ${m.content}` : m.content,
+        content: m.content,
       })),
-      { role: "user" as const, content: `[${userName}]: ${sanitizedMessage}` },
+      { role: "user" as const, content: sanitizedMessage },
     ],
     maxOutputTokens,
-    ...(tools ? { tools, maxSteps: 3 } : {}),
+    ...(tools ? { tools, toolChoice: "auto" as const, maxSteps: 2 } : {}),
   });
 
   return result;

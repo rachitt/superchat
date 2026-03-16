@@ -1,6 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { eq, and, desc, isNull, like } from "drizzle-orm";
+import { eq, and, desc, isNull, like, sql } from "drizzle-orm";
 import type { Server } from "socket.io";
 import type { ServerToClientEvents, ClientToServerEvents } from "@superchat/shared";
 import { db } from "../db/index.js";
@@ -21,6 +21,14 @@ interface ToolContext {
  * Build Vercel AI SDK tool definitions that SuperBot can invoke.
  */
 export function buildAiTools(ctx: ToolContext) {
+  // Guard against duplicate tool execution across multi-step calls
+  const executed = new Set<string>();
+  function once<T>(name: string, fn: () => Promise<T>): Promise<T | { skipped: true }> {
+    if (executed.has(name)) return Promise.resolve({ skipped: true });
+    executed.add(name);
+    return fn();
+  }
+
   const createPoll = tool({
     description: "Create a poll in the current channel for users to vote on",
     inputSchema: z.object({
@@ -32,6 +40,7 @@ export function buildAiTools(ctx: ToolContext) {
         .describe("Poll answer options"),
     }),
     execute: async ({ question, options }: { question: string; options: string[] }) => {
+      return once("createPoll", async () => {
       const payload = {
         question,
         options: options.map((text: string, i: number) => ({ id: i, text, votes: [] as string[] })),
@@ -45,6 +54,7 @@ export function buildAiTools(ctx: ToolContext) {
           type: "poll",
           content: question,
           payload,
+          createdAt: sql`now() + interval '3 seconds'`,
         })
         .returning();
 
@@ -61,6 +71,7 @@ export function buildAiTools(ctx: ToolContext) {
       });
 
       return { success: true, messageId: msg.id, question };
+      });
     },
   });
 
@@ -72,6 +83,7 @@ export function buildAiTools(ctx: ToolContext) {
         .describe("Type of game to start"),
     }),
     execute: async ({ gameType }: { gameType: "trivia" | "wordle" | "tic_tac_toe" | "cards" }) => {
+      return once("startGame", async () => {
       const [channel] = await db
         .select({ workspaceId: channels.workspaceId })
         .from(channels)
@@ -79,6 +91,12 @@ export function buildAiTools(ctx: ToolContext) {
         .limit(1);
 
       if (!channel) return { success: false as const, error: "Channel not found" };
+
+      // Cancel any existing waiting games in this channel
+      await db
+        .update(games)
+        .set({ status: "finished" })
+        .where(and(eq(games.channelId, ctx.channelId), eq(games.status, "waiting")));
 
       const [game] = await db
         .insert(games)
@@ -111,6 +129,7 @@ export function buildAiTools(ctx: ToolContext) {
       });
 
       return { success: true, gameId: game.id, gameType };
+      });
     },
   });
 

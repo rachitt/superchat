@@ -8,6 +8,7 @@ import { registerMessageHandlers } from "./handlers/message.js";
 import { registerPresenceHandlers } from "./handlers/presence.js";
 import { registerAiHandlers } from "./handlers/ai.js";
 import { registerGameHandlers } from "./handlers/game.js";
+import { registerLivingHandlers } from "./handlers/living.js";
 import { socketMessageLimiter } from "../lib/rate-limit.js";
 
 type IOServer = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -68,7 +69,8 @@ export function setupSocketHandlers(io: IOServer, auth: typeof Auth) {
     websocketConnectionsActive.inc();
 
     // Track events
-    socket.onAny((eventName: string) => {
+    socket.onAny((eventName: string, ...args: unknown[]) => {
+      connLog.info({ event: eventName }, "Socket event received");
       websocketEventsTotal.inc({ event_name: eventName });
     });
 
@@ -88,6 +90,7 @@ export function setupSocketHandlers(io: IOServer, auth: typeof Auth) {
     registerPresenceHandlers(io, socket);
     registerAiHandlers(io, socket);
     registerGameHandlers(io, socket);
+    registerLivingHandlers(io, socket);
 
     socket.on("disconnect", () => {
       websocketConnectionsActive.dec();

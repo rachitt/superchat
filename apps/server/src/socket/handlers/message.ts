@@ -64,6 +64,7 @@ export function registerMessageHandlers(io: IOServer, socket: IOSocket) {
         parentId: message.parentId,
         expiresAt: message.expiresAt?.toISOString() ?? null,
         createdAt: message.createdAt.toISOString(),
+        author: author ? { id: author.id, username: author.username, name: author.name, image: author.image } : undefined,
       };
 
       io.to(`channel:${message.channelId}`).emit("message:new", messageData);

@@ -32,6 +32,7 @@ interface ChatState {
   updateMessage: (message: MessageData) => void;
   removeMessage: (messageId: string, channelId: string) => void;
   setTyping: (channelId: string, userId: string, username: string, isTyping: boolean) => void;
+  updateMessagePayload: (messageId: string, payload: Record<string, unknown>) => void;
   toggleReaction: (messageId: string, userId: string, emoji: string, action: "add" | "remove") => void;
 }
 
@@ -51,7 +52,13 @@ export const useChatStore = create<ChatState>((set) => ({
     set((state) => {
       const updated = new Map(state.messages);
       const existing = updated.get(channelId) ?? [];
-      updated.set(channelId, [...existing, message]);
+      // Skip if message already exists (dedup)
+      if (existing.some((m) => m.id === message.id)) return state;
+      // Insert in chronological order by createdAt
+      const newMsgs = [...existing, message].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+      updated.set(channelId, newMsgs);
       return { messages: updated };
     }),
 
@@ -104,6 +111,21 @@ export const useChatStore = create<ChatState>((set) => ({
       else users.delete(userId);
       updated.set(channelId, users);
       return { typingUsers: updated };
+    }),
+
+  updateMessagePayload: (messageId, payload) =>
+    set((state) => {
+      const updated = new Map(state.messages);
+      for (const [channelId, msgs] of updated) {
+        const idx = msgs.findIndex((m) => m.id === messageId);
+        if (idx >= 0) {
+          const newMsgs = [...msgs];
+          newMsgs[idx] = { ...newMsgs[idx], payload };
+          updated.set(channelId, newMsgs);
+          break;
+        }
+      }
+      return { messages: updated };
     }),
 
   toggleReaction: (messageId, userId, emoji, action) =>

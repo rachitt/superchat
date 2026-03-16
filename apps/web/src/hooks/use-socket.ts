@@ -7,7 +7,7 @@ import { usePresenceStore } from "@/stores/presence-store";
 
 export function useSocket() {
   const initialized = useRef(false);
-  const { addMessage, updateMessage, removeMessage, setTyping, toggleReaction } =
+  const { addMessage, updateMessage, updateMessagePayload, removeMessage, setTyping, toggleReaction } =
     useChatStore();
   const setPresence = usePresenceStore((s) => s.setPresence);
 
@@ -41,6 +41,10 @@ export function useSocket() {
       setPresence(userId, status);
     });
 
+    socket.on("living:update", ({ messageId, payload }) => {
+      updateMessagePayload(messageId, payload);
+    });
+
     return () => {
       socket.off("message:new");
       socket.off("message:updated");
@@ -48,7 +52,8 @@ export function useSocket() {
       socket.off("typing:update");
       socket.off("message:reaction");
       socket.off("presence:changed");
+      socket.off("living:update");
       initialized.current = false;
     };
-  }, [addMessage, updateMessage, removeMessage, setTyping, toggleReaction, setPresence]);
+  }, [addMessage, updateMessage, updateMessagePayload, removeMessage, setTyping, toggleReaction, setPresence]);
 }

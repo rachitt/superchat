@@ -109,7 +109,7 @@ async function main() {
     for (const cookie of cookies) {
       reply.header("set-cookie", cookie);
     }
-    reply.status(response.status).send(response.body);
+    return reply.status(response.status).send(response.body);
   });
 
   // ── Per-IP rate limiting ──

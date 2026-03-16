@@ -14,6 +14,7 @@ export function useGameSocket() {
     updateGameState,
     finishGame,
     addChannelGame,
+    setPendingOpenGameId,
   } = useGameStore();
 
   useEffect(() => {
@@ -24,6 +25,7 @@ export function useGameSocket() {
 
     socket.on("game:created", ({ game, players }) => {
       addChannelGame(game.channelId, game);
+      setPendingOpenGameId(game.id);
     });
 
     socket.on("game:player_joined", ({ gameId, player }) => {
@@ -71,5 +73,6 @@ export function useGameSocket() {
     updateGameState,
     finishGame,
     addChannelGame,
+    setPendingOpenGameId,
   ]);
 }

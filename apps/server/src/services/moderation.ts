@@ -13,6 +13,9 @@ export async function autoModerate(content: string): Promise<string | null> {
   // Skip if no AI provider is configured
   if (!openai && !anthropic && !google) return null;
 
+  // Skip in development for faster message sending
+  if (process.env.NODE_ENV === "development") return null;
+
   // Skip very short messages
   if (content.length < 10) return null;
 

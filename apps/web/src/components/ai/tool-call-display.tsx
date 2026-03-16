@@ -11,8 +11,8 @@ function formatToolResult(entry: ToolCallEntry): string {
     case "createPoll":
       return "Poll created";
     case "startGame": {
-      const gameType = (entry.args.gameType as string) ?? "game";
-      return `${gameType} game started`;
+      const gameType = (entry.args?.gameType as string) || (entry.result as any)?.gameType || "game";
+      return `${gameType} started`;
     }
     case "searchMessages": {
       const res = entry.result as { count?: number } | undefined;
@@ -20,7 +20,7 @@ function formatToolResult(entry: ToolCallEntry): string {
       return `${count} message${count !== 1 ? "s" : ""} found`;
     }
     case "pinMessage": {
-      const pin = entry.args.pin !== false;
+      const pin = entry.args?.pin !== false;
       return pin ? "Pinned" : "Unpinned";
     }
     case "getCurrentTime": {

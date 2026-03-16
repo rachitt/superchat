@@ -1,5 +1,5 @@
 import type { Server, Socket } from "socket.io";
-import { eq, and, desc, isNull } from "drizzle-orm";
+import { eq, and, desc, isNull, sql } from "drizzle-orm";
 import type { ClientToServerEvents, ServerToClientEvents } from "@superchat/shared";
 import { AI_BOT_NAME } from "@superchat/shared";
 import { streamAiChat } from "../../services/ai.js";
@@ -25,8 +25,12 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
   const userId = socket.data.userId as string;
 
   socket.on("ai:chat", async ({ channelId, message, parentId }) => {
+    log.info({ channelId, userId, message: message?.slice(0, 50) }, "ai:chat received");
+    try {
     // Rate limit check
+    log.info("checking rate limit");
     const rateLimit = await checkAiRateLimit(userId);
+    log.info({ limited: rateLimit.limited }, "rate limit checked");
     if (rateLimit.limited) {
       log.warn({ userId, channelId }, "AI rate limit exceeded");
       socket.emit("ai:stream:error", {
@@ -39,53 +43,36 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
     const aiStart = Date.now();
 
     // Get user info for context
+    log.info("fetching author");
     const [author] = await db
       .select({ name: users.name, username: users.username })
       .from(users)
       .where(eq(users.id, userId));
+    log.info({ userName: author?.name }, "author fetched");
 
     const userName = author?.name ?? author?.username ?? "User";
 
     // Look up workspaceId from the channel
+    log.info("fetching channel");
     const [channel] = await db
       .select({ workspaceId: channels.workspaceId })
       .from(channels)
       .where(eq(channels.id, channelId))
       .limit(1);
+    log.info({ workspaceId: channel?.workspaceId }, "channel fetched");
 
     const workspaceId = channel?.workspaceId;
 
     // Build AI tools with context
     const aiTools = buildAiTools({ channelId, userId, io });
+    log.info("tools built");
 
-    // Determine thread parentId:
-    // If the caller already specified a parentId (continuing a thread), use it.
-    // Otherwise, find the user's message that triggered this AI chat to auto-thread.
-    let threadParentId = parentId ?? null;
-    if (!threadParentId) {
-      for (let attempt = 0; attempt < 3; attempt++) {
-        const [userMsg] = await db
-          .select({ id: messages.id })
-          .from(messages)
-          .where(
-            and(
-              eq(messages.channelId, channelId),
-              eq(messages.authorId, userId),
-              eq(messages.type, "text"),
-              isNull(messages.deletedAt)
-            )
-          )
-          .orderBy(desc(messages.createdAt))
-          .limit(1);
-        if (userMsg) {
-          threadParentId = userMsg.id;
-          break;
-        }
-        if (attempt < 2) await new Promise((r) => setTimeout(r, 100));
-      }
-    }
+    // Use provided parentId or null (no auto-threading for now)
+    const threadParentId = parentId ?? null;
 
     // Create a placeholder bot message in the database
+    // Use DB now() + interval to guarantee ordering after the user's message
+    log.info("inserting bot message");
     const [botMessage] = await db
       .insert(messages)
       .values({
@@ -94,8 +81,18 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
         type: "system",
         content: "",
         parentId: threadParentId,
+        createdAt: sql`now() + interval '2 seconds'`,
       })
-      .returning();
+      .returning({
+        id: messages.id,
+        channelId: messages.channelId,
+        authorId: messages.authorId,
+        type: messages.type,
+        content: messages.content,
+        parentId: messages.parentId,
+        createdAt: messages.createdAt,
+      });
+    log.info({ messageId: botMessage.id }, "bot message inserted");
 
     const messageId = botMessage.id;
 
@@ -115,10 +112,11 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
     activeStreams.set(messageId, abortController);
 
     // Timeout to prevent hung streams
-    const STREAM_TIMEOUT_MS = 30_000;
+    const STREAM_TIMEOUT_MS = 120_000; // 2 min for thinking models
     const timeout = setTimeout(() => abortController.abort(), STREAM_TIMEOUT_MS);
 
     try {
+      log.info("calling streamAiChat");
       const result = await streamAiChat({
         channelId,
         userMessage: message,
@@ -127,8 +125,11 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
         workspaceId,
         tools: aiTools,
       });
+      log.info("streamAiChat returned, iterating stream");
 
       let fullContent = "";
+      const executedTools = new Set<string>();
+      const toolResults = new Map<string, unknown>();
 
       for await (const chunk of result.fullStream) {
         if (abortController.signal.aborted) break;
@@ -141,14 +142,24 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
             chunk: chunk.textDelta,
             parentId: threadParentId,
           });
+        } else if (chunk.type === "tool-call") {
+          log.info({ toolName: chunk.toolName, args: chunk.args }, "AI tool call");
         } else if (chunk.type === "tool-result") {
-          io.to(`channel:${channelId}`).emit("ai:tool_call", {
-            channelId,
-            messageId,
-            toolName: chunk.toolName,
-            args: chunk.args as Record<string, unknown>,
-            result: chunk.result,
-          });
+          // Deduplicate by tool name (prevents double createPoll/startGame across steps)
+          if (!executedTools.has(chunk.toolName)) {
+            executedTools.add(chunk.toolName);
+            toolResults.set(chunk.toolName, chunk.result);
+            log.info({ toolName: chunk.toolName, result: chunk.result }, "AI tool result");
+            io.to(`channel:${channelId}`).emit("ai:tool_call", {
+              channelId,
+              messageId,
+              toolName: chunk.toolName,
+              args: chunk.args as Record<string, unknown>,
+              result: chunk.result,
+            });
+          } else {
+            log.info({ toolName: chunk.toolName }, "Skipping duplicate tool call");
+          }
         }
       }
 
@@ -173,15 +184,49 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
       }
 
       // Update the message in the database with the full content
+      // If tools were called but no text generated, create a summary
+      let finalContent = fullContent;
+      if (!finalContent && executedTools.size > 0) {
+        const parts: string[] = [];
+        for (const toolName of executedTools) {
+          const result = toolResults.get(toolName) as Record<string, unknown> | undefined;
+          switch (toolName) {
+            case "createPoll":
+              parts.push("Here's your poll!");
+              break;
+            case "startGame": {
+              const gameType = (result?.gameType as string) ?? "game";
+              parts.push(`Started a ${gameType} game — check the game panel! 🎮`);
+              break;
+            }
+            case "getCurrentTime": {
+              const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
+              parts.push(`It's currently ${now}.`);
+              break;
+            }
+            case "searchMessages": {
+              const count = (result as any)?.count ?? 0;
+              parts.push(count > 0 ? `Found ${count} message${count !== 1 ? "s" : ""}.` : "No messages found.");
+              break;
+            }
+            case "pinMessage":
+              parts.push((result as any)?.pinned ? "Message pinned!" : "Message unpinned.");
+              break;
+            default:
+              parts.push(`Done.`);
+          }
+        }
+        finalContent = parts.join(" ");
+      }
       await db
         .update(messages)
-        .set({ content: fullContent || "(No response generated)" })
+        .set({ content: finalContent || "(No response generated)" })
         .where(eq(messages.id, messageId));
 
       io.to(`channel:${channelId}`).emit("ai:stream:done", {
         channelId,
         messageId,
-        content: fullContent,
+        content: finalContent || fullContent,
         parentId: threadParentId,
       });
 
@@ -217,6 +262,10 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
       aiRequestDuration.observe({}, (Date.now() - aiStart) / 1000);
     } finally {
       activeStreams.delete(messageId);
+    }
+    } catch (outerErr) {
+      log.error({ err: outerErr, channelId }, "ai:chat handler crashed");
+      socket.emit("ai:stream:error", { channelId, error: "AI handler crashed unexpectedly" });
     }
   });
 

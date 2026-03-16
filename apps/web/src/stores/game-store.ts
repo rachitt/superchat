@@ -5,7 +5,10 @@ interface GameStoreState {
   activeGame: GameData | null;
   players: GamePlayerData[];
   channelGames: Map<string, GameData[]>;
+  /** Set when a game is created (e.g. by AI) and should auto-open the panel */
+  pendingOpenGameId: string | null;
 
+  setPendingOpenGameId: (id: string | null) => void;
   setActiveGame: (game: GameData | null) => void;
   setPlayers: (players: GamePlayerData[]) => void;
   updatePlayer: (player: GamePlayerData) => void;
@@ -22,7 +25,9 @@ export const useGameStore = create<GameStoreState>((set) => ({
   activeGame: null,
   players: [],
   channelGames: new Map(),
+  pendingOpenGameId: null,
 
+  setPendingOpenGameId: (id) => set({ pendingOpenGameId: id }),
   setActiveGame: (game) => set({ activeGame: game }),
 
   setPlayers: (players) => set({ players }),

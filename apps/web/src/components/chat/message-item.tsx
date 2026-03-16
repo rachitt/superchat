@@ -11,6 +11,7 @@ import { useTRPC } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
 import { SmartReplyBar } from "../ai/smart-reply-bar";
 import { OnlineIndicator } from "../ui/online-indicator";
+import { PollWidget } from "../living/poll-widget";
 
 interface MessageItemProps {
   message: MessageData & {
@@ -83,8 +84,10 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
   );
 
   const isOwn = session?.user?.id === message.authorId;
-  const displayName = message.author?.name ?? message.authorId.slice(0, 8);
-  const initials = displayName.slice(0, 2).toUpperCase();
+  const isPoll = message.type === "poll";
+  const isBot = message.type === "system";
+  const displayName = isBot ? "SuperBot" : isPoll ? "SuperBot" : (message.author?.name ?? message.authorId.slice(0, 8));
+  const initials = isBot ? "AI" : displayName.slice(0, 2).toUpperCase();
 
   const time = new Date(message.createdAt).toLocaleTimeString([], {
     hour: "2-digit",
@@ -216,6 +219,11 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
               Cancel
             </button>
           </div>
+        ) : message.type === "poll" && message.payload ? (
+          <PollWidget
+            messageId={message.id}
+            payload={message.payload as any}
+          />
         ) : (
           <p className="text-sm text-zinc-300 break-words">{message.content}</p>
         )}

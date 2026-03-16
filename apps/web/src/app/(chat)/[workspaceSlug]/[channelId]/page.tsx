@@ -6,8 +6,10 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/lib/trpc";
 import { useChatStore } from "@/stores/chat-store";
 import { useAiStore } from "@/stores/ai-store";
+import { useGameStore } from "@/stores/game-store";
 import { getSocket } from "@/lib/socket";
 import { useAiSocket } from "@/hooks/use-ai";
+import { useGameSocket } from "@/hooks/use-game";
 import { MessageList } from "@/components/chat/message-list";
 import { MessageInput } from "@/components/chat/message-input";
 import { ThreadPanel } from "@/components/chat/thread-panel";
@@ -24,12 +26,23 @@ export default function ChannelPage() {
   const { setSummarizing, setSummary } = useAiStore();
   const [showSummary, setShowSummary] = useState(false);
   const [showGames, setShowGames] = useState(false);
+  const pendingOpenGameId = useGameStore((s) => s.pendingOpenGameId);
+  const setPendingOpenGameId = useGameStore((s) => s.setPendingOpenGameId);
+
+  // Auto-open game panel when AI creates a game
+  useEffect(() => {
+    if (pendingOpenGameId) {
+      setShowGames(true);
+      setPendingOpenGameId(null);
+    }
+  }, [pendingOpenGameId, setPendingOpenGameId]);
   const [showSearch, setShowSearch] = useState(false);
   const openSearch = useCallback(() => setShowSearch(true), []);
   useSearchShortcut(openSearch);
 
-  // Set up AI socket listeners
+  // Set up AI and game socket listeners
   useAiSocket();
+  useGameSocket();
 
   const { data: workspace } = useQuery(
     trpc.workspace.getBySlug.queryOptions({ slug: workspaceSlug })
