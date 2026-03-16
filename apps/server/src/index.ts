@@ -14,6 +14,8 @@ import { db } from "./db/index.js";
 import { auth } from "./lib/auth.js";
 import { pubRedis, subRedis } from "./lib/redis.js";
 import { setupSocketHandlers } from "./socket/index.js";
+import { apiGeneralLimiter } from "./lib/rate-limit.js";
+import { setNotificationIO } from "./services/notifications.js";
 
 const PORT = parseInt(process.env.PORT || "4000", 10);
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
@@ -53,6 +55,18 @@ async function main() {
     reply.status(response.status).send(response.body);
   });
 
+  // ── Per-IP rate limiting ──
+  fastify.addHook("onRequest", async (req, reply) => {
+    const ip = req.ip;
+    const result = await apiGeneralLimiter.check(ip);
+    if (result.limited) {
+      reply
+        .status(429)
+        .header("Retry-After", String(result.retryAfter ?? 60))
+        .send({ error: "Too many requests", retryAfter: result.retryAfter });
+    }
+  });
+
   // ── tRPC ──
   await fastify.register(fastifyTRPCPlugin, {
     prefix: "/trpc",
@@ -85,6 +99,7 @@ async function main() {
   );
 
   setupSocketHandlers(io, auth);
+  setNotificationIO(io);
 
   // ── Health check ──
   fastify.get("/health", async () => ({ status: "ok" }));

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, isNull, desc, sql, ilike } from "drizzle-orm";
+import { eq, and, isNull, sql } from "drizzle-orm";
 import { router, protectedProcedure } from "../trpc.js";
 import {
   messages,
@@ -34,10 +34,12 @@ export const searchRouter = router({
         return { results: [] };
       }
 
+      const tsquery = sql`plainto_tsquery('english', ${input.query})`;
+
       const conditions = [
         eq(channels.workspaceId, input.workspaceId),
         isNull(messages.deletedAt),
-        ilike(messages.content, `%${input.query}%`),
+        sql`${messages.searchVector} @@ ${tsquery}`,
       ];
 
       if (input.channelId) {
@@ -61,12 +63,14 @@ export const searchRouter = router({
           channel: {
             name: channels.name,
           },
+          headline: sql<string>`ts_headline('english', ${messages.content}, ${tsquery})`.as("headline"),
+          rank: sql<number>`ts_rank(${messages.searchVector}, ${tsquery})`.as("rank"),
         })
         .from(messages)
         .innerJoin(users, eq(users.id, messages.authorId))
         .innerJoin(channels, eq(channels.id, messages.channelId))
         .where(and(...conditions))
-        .orderBy(desc(messages.createdAt))
+        .orderBy(sql`ts_rank(${messages.searchVector}, ${tsquery}) DESC`)
         .limit(input.limit);
 
       return { results };

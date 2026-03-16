@@ -8,9 +8,16 @@ import {
   timestamp,
   jsonb,
   index,
+  customType,
 } from "drizzle-orm/pg-core";
 import { channels } from "./channels";
 import { user } from "./auth";
+
+const tsvector = customType<{ data: string }>({
+  dataType() {
+    return "tsvector";
+  },
+});
 
 export const messages = pgTable(
   "messages",
@@ -32,6 +39,7 @@ export const messages = pgTable(
     editedAt: timestamp("edited_at", { mode: "date" }),
     deletedAt: timestamp("deleted_at", { mode: "date" }),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    searchVector: tsvector("search_vector"),
   },
   (table) => [
     index("messages_channel_created_idx").on(table.channelId, table.createdAt),

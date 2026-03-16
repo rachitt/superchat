@@ -111,5 +111,6 @@ export interface ServerToClientEvents {
   "game:state_update": (data: GameStateUpdate) => void;
   "game:finished": (data: GameFinishedEvent) => void;
   "game:error": (data: { gameId: string; message: string }) => void;
+  "notification:new": (data: { id: string; type: string; title: string; body: string; data?: Record<string, unknown>; createdAt: string }) => void;
   "error": (data: { message: string; code?: string }) => void;
 }

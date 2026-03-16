@@ -1,20 +1,86 @@
 import { redis } from "./redis.js";
 import { AI_RATE_LIMIT_PER_MINUTE } from "@superchat/shared";
 
+export interface RateLimitCheckResult {
+  limited: boolean;
+  remaining: number;
+  retryAfter?: number;
+}
+
+export interface RateLimitPreset {
+  maxRequests: number;
+  windowSeconds: number;
+}
+
+export const RATE_LIMIT_PRESETS = {
+  AI_CHAT: { maxRequests: 10, windowSeconds: 60 },
+  API_GENERAL: { maxRequests: 100, windowSeconds: 60 },
+  SOCKET_MESSAGE: { maxRequests: 30, windowSeconds: 60 },
+  AUTH_LOGIN: { maxRequests: 5, windowSeconds: 60 },
+} as const satisfies Record<string, RateLimitPreset>;
+
+export class RateLimiter {
+  private prefix: string;
+  private preset: RateLimitPreset;
+
+  constructor(prefix: string, preset: RateLimitPreset) {
+    this.prefix = prefix;
+    this.preset = preset;
+  }
+
+  async check(key: string): Promise<RateLimitCheckResult> {
+    const now = Date.now();
+    const windowMs = this.preset.windowSeconds * 1000;
+    const redisKey = `rl:${this.prefix}:${key}`;
+
+    // Sliding window using sorted set
+    const pipeline = redis.pipeline();
+    pipeline.zremrangebyscore(redisKey, 0, now - windowMs);
+    pipeline.zadd(redisKey, now, `${now}:${Math.random()}`);
+    pipeline.zcard(redisKey);
+    pipeline.expire(redisKey, this.preset.windowSeconds);
+
+    const results = await pipeline.exec();
+    const count = (results?.[2]?.[1] as number) ?? 0;
+
+    if (count > this.preset.maxRequests) {
+      // Remove the entry we just added since it's over limit
+      await redis.zremrangebyscore(redisKey, now, now);
+      const oldestEntry = await redis.zrange(redisKey, 0, 0, "WITHSCORES");
+      const oldestTime = oldestEntry.length >= 2 ? parseInt(oldestEntry[1], 10) : now;
+      const retryAfter = Math.ceil((oldestTime + windowMs - now) / 1000);
+
+      return {
+        limited: true,
+        remaining: 0,
+        retryAfter: Math.max(retryAfter, 1),
+      };
+    }
+
+    return {
+      limited: false,
+      remaining: this.preset.maxRequests - count,
+    };
+  }
+}
+
+// Pre-built limiters
+export const aiChatLimiter = new RateLimiter("ai_chat", RATE_LIMIT_PRESETS.AI_CHAT);
+export const apiGeneralLimiter = new RateLimiter("api_general", RATE_LIMIT_PRESETS.API_GENERAL);
+export const socketMessageLimiter = new RateLimiter("socket_msg", RATE_LIMIT_PRESETS.SOCKET_MESSAGE);
+export const authLoginLimiter = new RateLimiter("auth_login", RATE_LIMIT_PRESETS.AUTH_LOGIN);
+
+/**
+ * Backwards-compatible AI rate limit check.
+ */
 export interface RateLimitResult {
   limited: boolean;
   message: string;
 }
 
-/**
- * Check the AI rate limit for a user. Returns whether the request
- * is rate-limited and an appropriate message.
- */
 export async function checkAiRateLimit(userId: string): Promise<RateLimitResult> {
-  const key = `ai:ratelimit:${userId}`;
-  const count = await redis.incr(key);
-  if (count === 1) await redis.expire(key, 60);
-  if (count > AI_RATE_LIMIT_PER_MINUTE) {
+  const result = await aiChatLimiter.check(userId);
+  if (result.limited) {
     return {
       limited: true,
       message: `AI rate limit exceeded. Max ${AI_RATE_LIMIT_PER_MINUTE} requests per minute.`,

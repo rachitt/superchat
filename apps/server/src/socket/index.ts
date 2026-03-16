@@ -5,6 +5,7 @@ import { registerMessageHandlers } from "./handlers/message.js";
 import { registerPresenceHandlers } from "./handlers/presence.js";
 import { registerAiHandlers } from "./handlers/ai.js";
 import { registerGameHandlers } from "./handlers/game.js";
+import { socketMessageLimiter } from "../lib/rate-limit.js";
 
 type IOServer = Server<ClientToServerEvents, ServerToClientEvents>;
 
@@ -54,6 +55,18 @@ export function setupSocketHandlers(io: IOServer, auth: typeof Auth) {
     const userId = socket.data.userId as string;
     console.log(`[Socket] Connected: ${userId} (${socket.data.username})`);
     socket.join(`user:${userId}`);
+
+    // Per-socket rate limiting on message:send
+    socket.use(async ([event], next) => {
+      if (event === "message:send") {
+        const result = await socketMessageLimiter.check(userId);
+        if (result.limited) {
+          next(new Error("Rate limit exceeded. Please slow down."));
+          return;
+        }
+      }
+      next();
+    });
 
     registerMessageHandlers(io, socket);
     registerPresenceHandlers(io, socket);
