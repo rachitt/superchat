@@ -9,3 +9,24 @@ export type {
   ClientToServerEvents,
   ServerToClientEvents,
 } from "./socket-events";
+
+export type {
+  GameData,
+  GamePlayerData,
+  GameConfig,
+  GameState,
+  GameAction,
+  GameCreatedEvent,
+  GameStateUpdate,
+  GameFinishedEvent,
+  TriviaConfig,
+  TriviaState,
+  TriviaQuestion,
+  WordleConfig,
+  WordleState,
+  LetterResult,
+  TicTacToeConfig,
+  TicTacToeState,
+  CardsConfig,
+  CardsState,
+} from "./game";

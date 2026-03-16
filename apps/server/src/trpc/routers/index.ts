@@ -5,6 +5,7 @@ import { channelRouter } from "./channel.js";
 import { messageRouter } from "./message.js";
 import { uploadRouter } from "./upload.js";
 import { aiRouter } from "./ai.js";
+import { gameRouter } from "./game.js";
 
 export const appRouter = router({
   user: userRouter,
@@ -13,6 +14,7 @@ export const appRouter = router({
   message: messageRouter,
   upload: uploadRouter,
   ai: aiRouter,
+  game: gameRouter,
 });
 
 export type AppRouter = typeof appRouter;

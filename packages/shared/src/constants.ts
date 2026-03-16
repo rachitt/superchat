@@ -17,7 +17,7 @@ export type ChannelType = (typeof CHANNEL_TYPES)[number];
 export const WORKSPACE_ROLES = ["owner", "admin", "member"] as const;
 export type WorkspaceRole = (typeof WORKSPACE_ROLES)[number];
 
-export const GAME_TYPES = ["trivia", "word_chain", "draw_guess", "cards"] as const;
+export const GAME_TYPES = ["trivia", "wordle", "tic_tac_toe", "cards"] as const;
 export type GameType = (typeof GAME_TYPES)[number];
 
 export const GAME_STATUSES = ["waiting", "in_progress", "finished"] as const;

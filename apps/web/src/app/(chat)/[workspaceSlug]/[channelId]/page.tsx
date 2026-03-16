@@ -12,17 +12,24 @@ import { MessageList } from "@/components/chat/message-list";
 import { MessageInput } from "@/components/chat/message-input";
 import { ThreadPanel } from "@/components/chat/thread-panel";
 import { SummaryDialog } from "@/components/ai/summary-dialog";
+import { GamePanel } from "@/components/games/game-panel";
 
 export default function ChannelPage() {
-  const params = useParams<{ channelId: string }>();
+  const params = useParams<{ workspaceSlug: string; channelId: string }>();
   const channelId = params.channelId;
+  const workspaceSlug = params.workspaceSlug;
   const trpc = useTRPC();
   const { setActiveChannel, setMessages, activeThreadId } = useChatStore();
   const { setSummarizing, setSummary } = useAiStore();
   const [showSummary, setShowSummary] = useState(false);
+  const [showGames, setShowGames] = useState(false);
 
   // Set up AI socket listeners
   useAiSocket();
+
+  const { data: workspace } = useQuery(
+    trpc.workspace.getBySlug.queryOptions({ slug: workspaceSlug })
+  );
 
   useEffect(() => {
     setActiveChannel(channelId);
@@ -83,19 +90,39 @@ export default function ChannelPage() {
               {channelId.slice(0, 8)}
             </h2>
           </div>
-          <button
-            onClick={handleSummarize}
-            className="rounded-md bg-zinc-800 px-3 py-1 text-xs text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-200"
-            title="Summarize channel with AI"
-          >
-            Summarize
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSummarize}
+              className="rounded-md bg-zinc-800 px-3 py-1 text-xs text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-200"
+              title="Summarize channel with AI"
+            >
+              Summarize
+            </button>
+            <button
+              onClick={() => setShowGames(!showGames)}
+              className={`rounded-md px-2.5 py-1 text-sm transition-colors ${
+                showGames
+                  ? "bg-indigo-600/20 text-indigo-400"
+                  : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
+              }`}
+              title="Games"
+            >
+              🎮
+            </button>
+          </div>
         </div>
         <MessageList channelId={channelId} />
         <MessageInput channelId={channelId} />
       </div>
       {activeThreadId && <ThreadPanel parentId={activeThreadId} channelId={channelId} />}
       {showSummary && <SummaryDialog onClose={() => setShowSummary(false)} />}
+      {showGames && workspace?.id && (
+        <GamePanel
+          channelId={channelId}
+          workspaceId={workspace.id}
+          onClose={() => setShowGames(false)}
+        />
+      )}
     </div>
   );
 }
