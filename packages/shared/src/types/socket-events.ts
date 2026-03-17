@@ -103,6 +103,7 @@ export interface ServerToClientEvents {
   "message:updated": (data: MessageData) => void;
   "message:deleted": (data: { messageId: string; channelId: string }) => void;
   "message:reaction": (data: ReactionData & { action: "add" | "remove" }) => void;
+  "message:pinned": (data: { messageId: string; channelId: string; pinned: boolean }) => void;
   "typing:update": (data: TypingData & { isTyping: boolean }) => void;
   "presence:changed": (data: PresenceData) => void;
   "channel:updated": (data: { channelId: string }) => void;

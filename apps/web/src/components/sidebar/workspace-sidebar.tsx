@@ -11,7 +11,9 @@ import {
   Bot,
   Hash,
   Bell,
+  Bookmark,
 } from "lucide-react";
+import { useUiStore } from "@/stores/ui-store";
 import { ChannelList } from "./channel-list";
 import { DmList } from "./dm-list";
 import { CreateChannelDialog } from "./create-channel-dialog";
@@ -45,6 +47,8 @@ export function WorkspaceSidebar({ workspaceId, workspaceName, channels }: Works
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [showBotSettings, setShowBotSettings] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const toggleBookmarks = useUiStore((s) => s.toggleBookmarks);
+  const showBookmarks = useUiStore((s) => s.showBookmarks);
 
   const regularChannels = channels.filter((c) => c.type !== "dm");
   const dmChannels = channels.filter((c) => c.type === "dm");
@@ -89,6 +93,21 @@ export function WorkspaceSidebar({ workspaceId, workspaceName, channels }: Works
           </button>
         )}
         <div className="flex items-center gap-0.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={toggleBookmarks}
+                className={`rounded-md p-1.5 transition-colors ${
+                  showBookmarks
+                    ? "text-amber-400 bg-amber-500/10"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                }`}
+              >
+                <Bookmark className="h-4 w-4" fill={showBookmarks ? "currentColor" : "none"} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Saved messages</TooltipContent>
+          </Tooltip>
           <NotificationBell />
         </div>
       </div>

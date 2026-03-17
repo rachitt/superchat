@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { getSocket } from "@/lib/socket";
 import { useTRPC } from "@/lib/trpc";
 import { MAX_MESSAGE_LENGTH, AI_BOT_NAME } from "@superchat/shared";
@@ -17,6 +17,8 @@ import {
   Italic,
   Code,
   AtSign,
+  Mic,
+  Square,
 } from "lucide-react";
 import {
   Tooltip,
@@ -50,9 +52,21 @@ export function MessageInput({ channelId }: MessageInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
+  // Voice recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval>>(undefined);
+  const [isUploading, setIsUploading] = useState(false);
+
   const trpc = useTRPC();
   const { data: channelMembers } = useQuery(
     trpc.member.listByChannel.queryOptions({ channelId })
+  );
+
+  const getPresignedUrl = useMutation(
+    trpc.upload.getPresignedUrl.mutationOptions()
   );
 
   const { notifyTyping: notifySmartReplyTyping } = useSmartReplies(channelId);
@@ -110,6 +124,99 @@ export function MessageInput({ channelId }: MessageInputProps) {
     },
     [channelId]
   );
+
+  // Voice recording handlers
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus"
+          : "audio/webm",
+      });
+      mediaRecorderRef.current = mediaRecorder;
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.start(100);
+      setIsRecording(true);
+      setRecordingDuration(0);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration((d) => d + 1);
+      }, 1000);
+    } catch {
+      console.error("Microphone access denied");
+    }
+  }, []);
+
+  const stopRecording = useCallback(async () => {
+    const mediaRecorder = mediaRecorderRef.current;
+    if (!mediaRecorder || mediaRecorder.state === "inactive") return;
+
+    return new Promise<Blob>((resolve) => {
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        mediaRecorder.stream.getTracks().forEach((t) => t.stop());
+        resolve(blob);
+      };
+      mediaRecorder.stop();
+    });
+  }, []);
+
+  const handleVoiceRelease = useCallback(async () => {
+    if (!isRecording) return;
+    setIsRecording(false);
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+
+    const blob = await stopRecording();
+    if (!blob || blob.size < 1000) return; // Too short, discard
+
+    setIsUploading(true);
+    try {
+      const fileName = `voice-${Date.now()}.webm`;
+      const { uploadUrl, publicUrl } = await getPresignedUrl.mutateAsync({
+        fileName,
+        fileType: "audio/webm",
+        fileSize: blob.size,
+      });
+
+      await fetch(uploadUrl, {
+        method: "PUT",
+        body: blob,
+        headers: { "Content-Type": "audio/webm" },
+      });
+
+      const socket = getSocket();
+      socket.emit("message:send", {
+        channelId,
+        content: `\u{1F3A4} [Voice message](${publicUrl})`,
+      });
+    } catch (err) {
+      console.error("Voice upload failed:", err);
+    } finally {
+      setIsUploading(false);
+    }
+  }, [isRecording, stopRecording, getPresignedUrl, channelId]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      if (mediaRecorderRef.current?.state === "recording") {
+        mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
+
+  const formatRecordingTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
 
   const wrapSelection = useCallback((prefix: string, suffix: string) => {
     const textarea = textareaRef.current;
@@ -214,17 +321,33 @@ export function MessageInput({ channelId }: MessageInputProps) {
           />
         )}
 
+        {/* Recording indicator */}
+        {isRecording && (
+          <div className="flex items-center gap-3 px-4 pt-3 pb-1.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+            </span>
+            <span className="text-sm font-medium text-red-400 tabular-nums">
+              {formatRecordingTime(recordingDuration)}
+            </span>
+            <span className="text-xs text-muted-foreground">Recording — release to send</span>
+          </div>
+        )}
+
         {/* Textarea */}
-        <textarea
-          ref={textareaRef}
-          value={content}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          placeholder={`Message #channel — use @${AI_BOT_NAME} to ask AI`}
-          maxLength={MAX_MESSAGE_LENGTH}
-          rows={1}
-          className="block w-full resize-none bg-transparent px-4 pt-3 pb-1.5 text-[14px] text-foreground placeholder-muted-foreground/60 outline-none"
-        />
+        {!isRecording && (
+          <textarea
+            ref={textareaRef}
+            value={content}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            placeholder={`Message #channel — use @${AI_BOT_NAME} to ask AI`}
+            maxLength={MAX_MESSAGE_LENGTH}
+            rows={1}
+            className="block w-full resize-none bg-transparent px-4 pt-3 pb-1.5 text-[14px] text-foreground placeholder-muted-foreground/60 outline-none"
+          />
+        )}
 
         {/* Toolbar */}
         <div className="flex items-center justify-between px-2 pb-2">
@@ -329,6 +452,46 @@ export function MessageInput({ channelId }: MessageInputProps) {
                 {expiryLabel}
               </span>
             )}
+
+            {/* Voice record button */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    startRecording();
+                  }}
+                  onMouseUp={handleVoiceRelease}
+                  onMouseLeave={() => {
+                    if (isRecording) handleVoiceRelease();
+                  }}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    startRecording();
+                  }}
+                  onTouchEnd={handleVoiceRelease}
+                  disabled={isUploading}
+                  className={cn(
+                    "rounded-lg p-1.5 transition-all",
+                    isRecording
+                      ? "bg-red-500/15 text-red-400 scale-110"
+                      : isUploading
+                        ? "text-muted-foreground/50 cursor-not-allowed"
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  )}
+                >
+                  {isRecording ? (
+                    <Square className="h-3.5 w-3.5" fill="currentColor" />
+                  ) : (
+                    <Mic className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isRecording ? "Release to send" : "Hold to record voice message"}
+              </TooltipContent>
+            </Tooltip>
+
             <button
               onClick={handleSend}
               disabled={!content.trim()}
