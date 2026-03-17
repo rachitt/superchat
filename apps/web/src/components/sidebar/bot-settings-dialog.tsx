@@ -55,7 +55,7 @@ export function BotSettingsDialog({ workspaceId, onClose }: BotSettingsDialogPro
       <div className="relative w-full max-w-md rounded-xl border border-border bg-popover shadow-2xl animate-float-up">
         <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
           <div className="flex items-center gap-2">
-            <Bot className="h-4 w-4 text-teal-400" />
+            <Bot className="h-4 w-4 text-teal-700 dark:text-teal-400" />
             <h2 className="text-sm font-semibold text-foreground">Bot Settings</h2>
           </div>
           <button onClick={onClose} className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">

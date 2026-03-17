@@ -112,8 +112,8 @@ export function ThreadPanel({ parentId, channelId }: ThreadPanelProps) {
             <div className="px-3 py-2.5">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
-                  <Sparkles className="h-3 w-3 text-teal-400" />
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-teal-400/80">
+                  <Sparkles className="h-3 w-3 text-teal-700 dark:text-teal-400" />
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-teal-700 dark:text-teal-400/80">
                     Summary
                   </span>
                 </div>
@@ -123,8 +123,8 @@ export function ThreadPanel({ parentId, channelId }: ThreadPanelProps) {
                   className={cn(
                     "flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium transition-all",
                     catchMeUpMutation.isPending
-                      ? "text-teal-400/50 cursor-wait"
-                      : "text-teal-400 hover:bg-teal-500/10 hover:text-teal-300"
+                      ? "text-teal-700 dark:text-teal-400/50 cursor-wait"
+                      : "text-teal-700 dark:text-teal-400 hover:bg-teal-500/10 hover:text-teal-600 dark:text-teal-300"
                   )}
                 >
                   <RefreshCw className={cn("h-2.5 w-2.5", catchMeUpMutation.isPending && "animate-spin")} />

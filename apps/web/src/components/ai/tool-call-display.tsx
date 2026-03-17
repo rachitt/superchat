@@ -61,7 +61,7 @@ function ToolCallPill({ entry }: { entry: ToolCallEntry }) {
       className={cn(
         "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-all",
         isError && "border-destructive/30 bg-destructive/10 text-destructive",
-        isRunning && "border-teal-500/30 bg-teal-500/10 text-teal-400",
+        isRunning && "border-teal-500/30 bg-teal-500/10 text-teal-700 dark:text-teal-400",
         !isRunning && !isError && "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
       )}
     >

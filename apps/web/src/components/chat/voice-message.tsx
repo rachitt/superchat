@@ -177,7 +177,7 @@ export function VoiceMessage({ src }: VoiceMessageProps) {
           "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all",
           playing
             ? "bg-teal-500 text-white shadow-md shadow-teal-500/25"
-            : "bg-teal-500/15 text-teal-400 hover:bg-teal-500/25"
+            : "bg-teal-500/15 text-teal-700 dark:text-teal-400 hover:bg-teal-500/25"
         )}
       >
         {playing ? (

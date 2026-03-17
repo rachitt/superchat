@@ -113,7 +113,7 @@ export function EditProfileDialog({ onClose }: EditProfileDialogProps) {
           <div>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="text-sm text-teal-400 hover:text-teal-300"
+              className="text-sm text-teal-700 dark:text-teal-400 hover:text-teal-600 dark:text-teal-300"
             >
               Change avatar
             </button>

@@ -26,7 +26,7 @@ export function TicTacToeGame({ game, players, userId, onAction }: TicTacToeGame
         {isOver ? (state.phase === "draw" ? "Draw!" : state.winner === userId ? "🎉 You win!" : `${players.find((p) => p.userId === state.winner)?.displayName} wins!`) : isMyTurn ? `Your turn (${mySymbol})` : `Waiting for ${cur?.displayName || "..."}...`}
       </div>
       <div className="flex items-center gap-6 text-sm">
-        <div className={state.currentTurnUserId === state.players.x ? "opacity-100" : "opacity-50"}><span className="font-black text-teal-400">X</span> {xP?.displayName || "P1"}</div>
+        <div className={state.currentTurnUserId === state.players.x ? "opacity-100" : "opacity-50"}><span className="font-black text-teal-700 dark:text-teal-400">X</span> {xP?.displayName || "P1"}</div>
         <span className="text-zinc-600">vs</span>
         <div className={state.currentTurnUserId === state.players.o ? "opacity-100" : "opacity-50"}><span className="font-black text-pink-400">O</span> {oP?.displayName || "P2"}</div>
       </div>
@@ -36,7 +36,7 @@ export function TicTacToeGame({ game, players, userId, onAction }: TicTacToeGame
           const isWin = state.winningLine?.includes(i);
           let cls = "flex h-16 w-16 items-center justify-center rounded-lg border-2 text-2xl font-black transition-all ";
           if (isWin) cls += "border-emerald-500 bg-emerald-900/30 text-emerald-400";
-          else if (sym === "X") cls += "border-teal-600/50 bg-teal-900/20 text-teal-400";
+          else if (sym === "X") cls += "border-teal-600/50 bg-teal-900/20 text-teal-700 dark:text-teal-400";
           else if (sym === "O") cls += "border-pink-600/50 bg-pink-900/20 text-pink-400";
           else if (isMyTurn && !isOver) cls += "border-border bg-muted hover:border-zinc-500 cursor-pointer";
           else cls += "border-border/50 bg-muted/50";

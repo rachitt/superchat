@@ -56,7 +56,7 @@ export function DynamicCardWidget({ messageId, payload }: DynamicCardWidgetProps
             href={payload.linkUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-2 inline-block text-xs font-medium text-teal-400 hover:text-teal-300 hover:underline"
+            className="mt-2 inline-block text-xs font-medium text-teal-700 dark:text-teal-400 hover:text-teal-600 dark:text-teal-300 hover:underline"
           >
             {payload.linkLabel || "Open link"} →
           </a>

@@ -132,15 +132,15 @@ export default function ProfilePage() {
         {/* Stats */}
         <div className="mt-6 grid grid-cols-3 gap-4">
           <div className="rounded-lg border border-border bg-card p-4 text-center">
-            <p className="text-2xl font-bold text-teal-400">{user.level}</p>
+            <p className="text-2xl font-bold text-teal-700 dark:text-teal-400">{user.level}</p>
             <p className="text-xs text-muted-foreground">Level</p>
           </div>
           <div className="rounded-lg border border-border bg-card p-4 text-center">
-            <p className="text-2xl font-bold text-teal-400">{user.xp}</p>
+            <p className="text-2xl font-bold text-teal-700 dark:text-teal-400">{user.xp}</p>
             <p className="text-xs text-muted-foreground">XP</p>
           </div>
           <div className="rounded-lg border border-border bg-card p-4 text-center">
-            <p className="text-2xl font-bold text-teal-400">
+            <p className="text-2xl font-bold text-teal-700 dark:text-teal-400">
               {user.createdAt
                 ? new Date(user.createdAt).toLocaleDateString("en-US", {
                     month: "short",

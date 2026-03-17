@@ -191,7 +191,7 @@ function GameResults({
                 {p.displayName || p.username}
               </span>
             </div>
-            <span className="text-sm font-bold text-teal-400">{p.score} pts</span>
+            <span className="text-sm font-bold text-teal-700 dark:text-teal-400">{p.score} pts</span>
           </div>
         ))}
       </div>

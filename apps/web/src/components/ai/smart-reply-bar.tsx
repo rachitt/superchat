@@ -36,7 +36,7 @@ export function SmartReplyBar({ channelId, messageId, isLoading }: SmartReplyBar
 
   return (
     <div className="mb-2 flex flex-wrap items-center gap-1.5 animate-slide-up">
-      <Sparkles className="h-3 w-3 text-teal-400" />
+      <Sparkles className="h-3 w-3 text-teal-700 dark:text-teal-400" />
       {replies.map((reply, i) => (
         <button
           key={i}

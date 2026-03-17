@@ -127,15 +127,15 @@ export default function SettingsPage() {
           </h2>
           <div className="mt-3 grid grid-cols-3 gap-3">
             <div className="rounded-lg border border-border bg-card p-4 text-center">
-              <p className="text-2xl font-bold text-teal-400">{user?.level ?? 1}</p>
+              <p className="text-2xl font-bold text-teal-700 dark:text-teal-400">{user?.level ?? 1}</p>
               <p className="text-xs text-muted-foreground">Level</p>
             </div>
             <div className="rounded-lg border border-border bg-card p-4 text-center">
-              <p className="text-2xl font-bold text-teal-400">{user?.xp ?? 0}</p>
+              <p className="text-2xl font-bold text-teal-700 dark:text-teal-400">{user?.xp ?? 0}</p>
               <p className="text-xs text-muted-foreground">XP</p>
             </div>
             <div className="rounded-lg border border-border bg-card p-4 text-center">
-              <p className="text-2xl font-bold text-teal-400">{user?.streakDays ?? 0}</p>
+              <p className="text-2xl font-bold text-teal-700 dark:text-teal-400">{user?.streakDays ?? 0}</p>
               <p className="text-xs text-muted-foreground">Streak Days</p>
             </div>
           </div>

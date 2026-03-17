@@ -49,7 +49,7 @@ export function CardsGame({ game, players, userId, onAction }: CardsGameProps) {
         <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Scores</p>
         {[...players].sort((a, b) => (state.scores[b.userId] || 0) - (state.scores[a.userId] || 0)).map((p) => (
           <div key={p.userId} className="flex items-center justify-between py-0.5">
-            <span className={`text-sm ${p.userId === userId ? "text-teal-400 font-medium" : "text-muted-foreground"}`}>{p.displayName}{p.userId === userId ? " (you)" : ""}</span>
+            <span className={`text-sm ${p.userId === userId ? "text-teal-700 dark:text-teal-400 font-medium" : "text-muted-foreground"}`}>{p.displayName}{p.userId === userId ? " (you)" : ""}</span>
             <span className="text-sm font-mono text-secondary-foreground">{state.scores[p.userId] || 0}</span>
           </div>
         ))}

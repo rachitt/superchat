@@ -481,7 +481,7 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
                 "rounded-md p-1.5 transition-colors disabled:opacity-50",
                 smartReplyError
                   ? "text-destructive"
-                  : "text-muted-foreground hover:bg-accent hover:text-teal-400"
+                  : "text-muted-foreground hover:bg-accent hover:text-teal-700 dark:text-teal-400"
               )}
             >
               <Sparkles className="h-3.5 w-3.5" />

@@ -56,7 +56,7 @@ export function TriviaGame({ game, players, userId, onAction }: TriviaGameProps)
           let cls = "flex items-center gap-3 rounded-lg border p-3 text-left transition-all text-sm ";
           if (isCorrect) cls += "border-emerald-500 bg-emerald-900/30 text-emerald-300";
           else if (isWrong) cls += "border-red-500 bg-red-900/30 text-red-300";
-          else if (isSelected) cls += "border-teal-500 bg-teal-900/30 text-teal-300";
+          else if (isSelected) cls += "border-teal-500 bg-teal-900/30 text-teal-600 dark:text-teal-300";
           else if (hasAnswered || isReveal) cls += "border-border bg-muted/30 text-muted-foreground";
           else cls += "border-border bg-muted text-foreground hover:border-zinc-500 cursor-pointer";
           return (
@@ -79,7 +79,7 @@ function Scoreboard({ players, scores, userId }: { players: GamePlayerData[]; sc
       <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Scores</p>
       {players.map((p) => (
         <div key={p.userId} className="flex items-center justify-between py-0.5">
-          <span className={`text-sm ${p.userId === userId ? "text-teal-400 font-medium" : "text-muted-foreground"}`}>{p.displayName || p.username}{p.userId === userId ? " (you)" : ""}</span>
+          <span className={`text-sm ${p.userId === userId ? "text-teal-700 dark:text-teal-400 font-medium" : "text-muted-foreground"}`}>{p.displayName || p.username}{p.userId === userId ? " (you)" : ""}</span>
           <span className="text-sm font-mono text-secondary-foreground">{scores[p.userId] || 0}</span>
         </div>
       ))}
