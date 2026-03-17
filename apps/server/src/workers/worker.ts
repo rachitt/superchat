@@ -4,6 +4,8 @@ import { getQueue, closeAllQueues } from "./queue.js";
 import processGameTimeout from "./processors/game-timeout.js";
 import processMessageCleanup from "./processors/message-cleanup.js";
 import processLivingTick from "./processors/living-tick.js";
+import processReminder from "./processors/reminder.js";
+import processThreadSummary from "./processors/thread-summary.js";
 import logger from "../lib/logger.js";
 import {
   bullmqJobsProcessedTotal,
@@ -46,6 +48,12 @@ const workers = [
     connection: { ...connectionOpts },
   }),
   new Worker("living-tick", wrapProcessor("living-tick", processLivingTick), {
+    connection: { ...connectionOpts },
+  }),
+  new Worker("reminders", wrapProcessor("reminders", processReminder), {
+    connection: { ...connectionOpts },
+  }),
+  new Worker("thread-summary", wrapProcessor("thread-summary", processThreadSummary), {
     connection: { ...connectionOpts },
   }),
 ];

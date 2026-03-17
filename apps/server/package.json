@@ -33,6 +33,7 @@
     "fastify": "^5",
     "fastify-plugin": "^5",
     "ioredis": "^5",
+    "openai": "^6.31.0",
     "pg": "^8",
     "pino": "^10.3.1",
     "pino-pretty": "^13.1.3",

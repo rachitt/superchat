@@ -4,9 +4,10 @@ import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { getSocket } from "@/lib/socket";
 import { useTRPC } from "@/lib/trpc";
-import { MAX_MESSAGE_LENGTH, AI_BOT_NAME } from "@superchat/shared";
+import { MAX_MESSAGE_LENGTH, AI_BOT_NAME, SLASH_COMMANDS } from "@superchat/shared";
 import { FileUpload } from "./file-upload";
 import { MentionPopover, type MentionUser } from "./mention-popover";
+import { SlashCommandPopover } from "./slash-command-popover";
 import { SmartReplyBar } from "../ai/smart-reply-bar";
 import { useSmartReplies } from "@/hooks/use-smart-replies";
 import { useChatStore } from "@/stores/chat-store";
@@ -48,6 +49,9 @@ export function MessageInput({ channelId }: MessageInputProps) {
   const [mentionOpen, setMentionOpen] = useState(false);
   const [mentionFilter, setMentionFilter] = useState("");
   const [mentionIndex, setMentionIndex] = useState(0);
+  const [slashOpen, setSlashOpen] = useState(false);
+  const [slashFilter, setSlashFilter] = useState("");
+  const [slashIndex, setSlashIndex] = useState(0);
   const [isUserTyping, setIsUserTyping] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -232,6 +236,18 @@ export function MessageInput({ channelId }: MessageInputProps) {
     }, 0);
   }, [content]);
 
+  const handleSlashSelect = useCallback(
+    (commandName: string) => {
+      const cmd = SLASH_COMMANDS.find((c) => c.name === commandName);
+      if (!cmd) return;
+      // Replace the typed "/" + filter with the command usage template
+      setContent(`/${commandName} `);
+      setSlashOpen(false);
+      textareaRef.current?.focus();
+    },
+    []
+  );
+
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const value = e.target.value;
@@ -239,6 +255,20 @@ export function MessageInput({ channelId }: MessageInputProps) {
       handleTyping();
       const cursorPos = e.target.selectionStart;
       const textBeforeCursor = value.slice(0, cursorPos);
+
+      // Slash command detection — only at the very start of input
+      const slashMatch = textBeforeCursor.match(/^\/(\w*)$/);
+      if (slashMatch) {
+        setSlashOpen(true);
+        setSlashFilter(slashMatch[1]);
+        setSlashIndex(0);
+        setMentionOpen(false);
+        return;
+      } else {
+        setSlashOpen(false);
+      }
+
+      // Mention detection
       const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
       if (mentionMatch) {
         const isAiMention = mentionMatch[1].length > 0 &&
@@ -277,6 +307,17 @@ export function MessageInput({ channelId }: MessageInputProps) {
   );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Slash command popover navigation
+    if (slashOpen) {
+      const filtered = SLASH_COMMANDS.filter((c) => c.name.toLowerCase().startsWith(slashFilter.toLowerCase()));
+      const clampedIndex = Math.min(slashIndex, Math.max(filtered.length - 1, 0));
+      if (e.key === "ArrowDown") { e.preventDefault(); setSlashIndex(Math.min(clampedIndex + 1, filtered.length - 1)); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); setSlashIndex(Math.max(clampedIndex - 1, 0)); return; }
+      if ((e.key === "Enter" || e.key === "Tab") && filtered.length > 0) { e.preventDefault(); handleSlashSelect(filtered[clampedIndex].name); return; }
+      if (e.key === "Escape") { e.preventDefault(); setSlashOpen(false); return; }
+    }
+
+    // Mention popover navigation
     if (mentionOpen && channelMembers) {
       const filtered = channelMembers.filter((u) => {
         const q = mentionFilter.toLowerCase();
@@ -310,6 +351,16 @@ export function MessageInput({ channelId }: MessageInputProps) {
         <SmartReplyBar channelId={channelId} messageId={latestMessageId} />
       )}
       <div className="relative rounded-xl border border-border bg-card transition-colors focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/10">
+        {/* Slash command popover */}
+        {slashOpen && (
+          <SlashCommandPopover
+            filter={slashFilter}
+            selectedIndex={slashIndex}
+            onSelect={handleSlashSelect}
+            onClose={() => setSlashOpen(false)}
+          />
+        )}
+
         {/* Mention popover */}
         {mentionOpen && channelMembers && (
           <MentionPopover
