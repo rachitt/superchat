@@ -119,5 +119,7 @@ export interface ServerToClientEvents {
   "game:finished": (data: GameFinishedEvent) => void;
   "game:error": (data: { gameId: string; message: string }) => void;
   "notification:new": (data: { id: string; type: string; title: string; body: string; data?: Record<string, unknown>; createdAt: string }) => void;
+  "user:levelup": (data: { userId: string; newLevel: number; xp: number }) => void;
+  "leaderboard:update": (data: { workspaceId: string }) => void;
   "error": (data: { message: string; code?: string }) => void;
 }

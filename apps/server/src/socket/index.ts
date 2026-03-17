@@ -10,12 +10,15 @@ import { registerAiHandlers } from "./handlers/ai.js";
 import { registerGameHandlers } from "./handlers/game.js";
 import { registerLivingHandlers } from "./handlers/living.js";
 import { socketMessageLimiter } from "../lib/rate-limit.js";
+import { setXpIO } from "../services/xp.js";
 
 type IOServer = Server<ClientToServerEvents, ServerToClientEvents>;
 
 const log = createChildLogger({ module: "socket" });
 
 export function setupSocketHandlers(io: IOServer, auth: typeof Auth) {
+  setXpIO(io);
+
   io.use(async (socket, next) => {
     try {
       // Try cookie-based auth first

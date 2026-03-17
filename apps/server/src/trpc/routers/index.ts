@@ -10,6 +10,7 @@ import { searchRouter } from "./search.js";
 import { notificationRouter } from "./notification.js";
 import { memberRouter } from "./member.js";
 import { dmRouter } from "./dm.js";
+import { leaderboardRouter } from "./leaderboard.js";
 
 export const appRouter = router({
   user: userRouter,
@@ -23,6 +24,7 @@ export const appRouter = router({
   notification: notificationRouter,
   member: memberRouter,
   dm: dmRouter,
+  leaderboard: leaderboardRouter,
 });
 
 export type AppRouter = typeof appRouter;

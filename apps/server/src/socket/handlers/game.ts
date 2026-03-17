@@ -7,6 +7,7 @@ import { games, gamePlayers, user as users } from "../../db/schema/index.js";
 import { getGameEngine } from "../../games/index.js";
 import { enqueueJob } from "../../workers/queue.js";
 import { createChildLogger } from "../../lib/logger.js";
+import { awardXP, XP_RATES } from "../../services/xp.js";
 
 const log = createChildLogger({ module: "game" });
 
@@ -270,6 +271,11 @@ export function registerGameHandlers(io: IOServer, socket: IOSocket) {
       const winner = finalPlayers.length > 0
         ? finalPlayers.reduce((a, b) => (a.score > b.score ? a : b))
         : null;
+
+      // Award XP to game winner
+      if (winner) {
+        awardXP(winner.userId, XP_RATES.game_won, "game_won").catch(() => {});
+      }
 
       io.to(`game:${gameId}`).emit("game:finished", {
         gameId,

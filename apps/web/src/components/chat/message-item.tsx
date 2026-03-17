@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import type { MessageData } from "@superchat/shared";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -10,7 +10,7 @@ import { useAiStore } from "@/stores/ai-store";
 import { usePresenceStore } from "@/stores/presence-store";
 import { useSession } from "@/lib/auth-client";
 import { useTRPC } from "@/lib/trpc";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { SmartReplyBar } from "../ai/smart-reply-bar";
 import { OnlineIndicator } from "../ui/online-indicator";
@@ -19,6 +19,8 @@ import { CountdownWidget } from "../living/countdown-widget";
 import { SelfDestructWidget } from "../living/self-destruct-widget";
 import { DynamicCardWidget } from "../living/dynamic-card-widget";
 import { LiveScoreWidget } from "../living/live-score-widget";
+import { LevelBadge } from "../gamification/level-badge";
+import { EmojiPickerPopover, getFrequentEmojis, trackEmojiUsage } from "../gamification/emoji-picker-popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Tooltip,
@@ -32,6 +34,7 @@ import {
   Pencil,
   Trash2,
   Clock,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +45,7 @@ interface MessageItemProps {
       username: string | null;
       name: string;
       image: string | null;
+      level?: number;
     };
     expiresAt?: string | null;
   };
@@ -50,7 +54,6 @@ interface MessageItemProps {
 }
 
 const EMPTY_REACTIONS: never[] = [];
-const QUICK_EMOJIS = ["👍", "❤️", "😂", "🎉", "😮", "🔥"];
 
 function formatCountdown(expiresAt: string): { remaining: string; expired: boolean } {
   const diff = new Date(expiresAt).getTime() - Date.now();
@@ -124,6 +127,13 @@ const markdownComponents = {
   ),
 };
 
+/** Simple component that fetches a single user name for tooltip display */
+function UserName({ userId }: { userId: string }) {
+  const trpc = useTRPC();
+  const { data } = useQuery(trpc.user.getById.queryOptions({ userId }));
+  return <>{data?.name ?? data?.username ?? userId.slice(0, 8)}</>;
+}
+
 export function MessageItem({ message, showThread = true, highlighted = false }: MessageItemProps) {
   const { data: session } = useSession();
   const router = useRouter();
@@ -134,14 +144,18 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
   const setSmartReplies = useAiStore((s) => s.setSmartReplies);
   const authorPresence = usePresenceStore((s) => s.users.get(message.authorId));
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showFullPicker, setShowFullPicker] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [loadingReplies, setLoadingReplies] = useState(false);
   const [smartReplyError, setSmartReplyError] = useState(false);
+  const [recentlyReacted, setRecentlyReacted] = useState<string | null>(null);
   const { remaining: expiryRemaining, expired } = useCountdown(message.expiresAt);
 
   const trpc = useTRPC();
   const smartReplyMutation = useMutation(trpc.ai.smartReplies.mutationOptions());
+
+  const frequentEmojis = useMemo(() => getFrequentEmojis(), []);
 
   const isOwn = session?.user?.id === message.authorId;
   const isPoll = message.type === "poll";
@@ -149,17 +163,22 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
   const isBot = message.type === "system";
   const displayName = isBot ? "SuperBot" : isLivingMessage ? "SuperBot" : (message.author?.name ?? message.authorId.slice(0, 8));
   const initials = isBot ? "AI" : displayName.slice(0, 2).toUpperCase();
+  const authorLevel = message.author?.level ?? 1;
 
   const time = new Date(message.createdAt).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
   });
 
-  const handleReact = (emoji: string) => {
+  const handleReact = useCallback((emoji: string) => {
     const socket = getSocket();
     socket.emit("message:react", { messageId: message.id, emoji });
+    trackEmojiUsage(emoji);
     setShowEmojiPicker(false);
-  };
+    setShowFullPicker(false);
+    setRecentlyReacted(emoji);
+    setTimeout(() => setRecentlyReacted(null), 600);
+  }, [message.id]);
 
   const handleEdit = () => {
     if (!editContent.trim()) return;
@@ -236,7 +255,7 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
 
       {/* Content */}
       <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => {
               if (!isBot && !isPoll && message.author?.id) {
@@ -250,6 +269,9 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
           >
             {displayName}
           </button>
+          {!isBot && !isLivingMessage && (
+            <LevelBadge level={authorLevel} size="sm" />
+          )}
           {message.author?.username && (
             <span className="text-[11px] text-muted-foreground">@{message.author.username}</span>
           )}
@@ -327,20 +349,31 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
         {/* Reactions */}
         {reactions.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1">
-            {reactions.map((r) => (
-              <button
-                key={r.emoji}
-                onClick={() => handleReact(r.emoji)}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-all",
-                  r.userIds.has(session?.user?.id ?? "")
-                    ? "border-primary/40 bg-primary/10 text-primary"
-                    : "border-border bg-accent text-muted-foreground hover:border-primary/30 hover:bg-primary/5"
-                )}
-              >
-                {r.emoji} <span className="font-medium">{r.userIds.size}</span>
-              </button>
-            ))}
+            {reactions.map((r) => {
+              const isReacted = r.userIds.has(session?.user?.id ?? "");
+              const justReacted = recentlyReacted === r.emoji;
+              return (
+                <Tooltip key={r.emoji}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => handleReact(r.emoji)}
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-all",
+                        justReacted && "animate-reaction-pop",
+                        isReacted
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "border-border bg-accent text-muted-foreground hover:border-primary/30 hover:bg-primary/5"
+                      )}
+                    >
+                      {r.emoji} <span className="font-medium">{r.userIds.size}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <ReactionTooltipContent userIds={r.userIds} emoji={r.emoji} />
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
           </div>
         )}
 
@@ -426,10 +459,10 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
         )}
       </div>
 
-      {/* Quick emoji picker */}
+      {/* Quick emoji bar + full picker */}
       {showEmojiPicker && (
-        <div className="absolute -top-11 right-4 flex gap-0.5 rounded-lg border border-border bg-card p-1 shadow-lg animate-slide-down">
-          {QUICK_EMOJIS.map((emoji) => (
+        <div className="absolute -top-11 right-4 z-50 flex gap-0.5 rounded-lg border border-border bg-card p-1 shadow-lg animate-slide-down">
+          {frequentEmojis.map((emoji) => (
             <button
               key={emoji}
               onClick={() => handleReact(emoji)}
@@ -438,8 +471,45 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
               {emoji}
             </button>
           ))}
+          <div className="mx-0.5 w-px bg-border" />
+          <button
+            onClick={() => {
+              setShowEmojiPicker(false);
+              setShowFullPicker(true);
+            }}
+            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
         </div>
       )}
+
+      {showFullPicker && (
+        <EmojiPickerPopover
+          onSelect={handleReact}
+          onClose={() => setShowFullPicker(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Shows who reacted in a tooltip */
+function ReactionTooltipContent({ userIds, emoji }: { userIds: Set<string>; emoji: string }) {
+  const ids = Array.from(userIds).slice(0, 6);
+  const extra = userIds.size - ids.length;
+  return (
+    <div className="text-xs max-w-48">
+      <span>
+        {ids.map((id, i) => (
+          <span key={id}>
+            {i > 0 && ", "}
+            <UserName userId={id} />
+          </span>
+        ))}
+        {extra > 0 && ` and ${extra} more`}
+      </span>
+      <span className="ml-1 text-muted-foreground">reacted with {emoji}</span>
     </div>
   );
 }

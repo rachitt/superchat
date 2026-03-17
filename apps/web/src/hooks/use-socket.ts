@@ -1,15 +1,18 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { getSocket } from "@/lib/socket";
 import { useChatStore } from "@/stores/chat-store";
 import { usePresenceStore } from "@/stores/presence-store";
+import { useGamificationStore } from "@/stores/gamification-store";
 
 export function useSocket() {
   const initialized = useRef(false);
   const { addMessage, updateMessage, updateMessagePayload, removeMessage, setTyping, toggleReaction } =
     useChatStore();
   const setPresence = usePresenceStore((s) => s.setPresence);
+  const setLevel = useGamificationStore((s) => s.setLevel);
 
   useEffect(() => {
     if (initialized.current) return;
@@ -45,6 +48,15 @@ export function useSocket() {
       updateMessagePayload(messageId, payload);
     });
 
+    socket.on("user:levelup", ({ newLevel, xp }) => {
+      setLevel(newLevel, xp);
+      toast("Level Up!", {
+        description: `You reached level ${newLevel}!`,
+        duration: 5000,
+        icon: "🎉",
+      });
+    });
+
     return () => {
       socket.off("message:new");
       socket.off("message:updated");
@@ -53,7 +65,8 @@ export function useSocket() {
       socket.off("message:reaction");
       socket.off("presence:changed");
       socket.off("living:update");
+      socket.off("user:levelup");
       initialized.current = false;
     };
-  }, [addMessage, updateMessage, updateMessagePayload, removeMessage, setTyping, toggleReaction, setPresence]);
+  }, [addMessage, updateMessage, updateMessagePayload, removeMessage, setTyping, toggleReaction, setPresence, setLevel]);
 }

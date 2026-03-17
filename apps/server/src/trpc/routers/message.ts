@@ -31,6 +31,7 @@ export const messageRouter = router({
             username: users.username,
             name: users.name,
             image: users.image,
+            level: users.level,
           },
         })
         .from(messages)
@@ -59,6 +60,7 @@ export const messageRouter = router({
             username: users.username,
             name: users.name,
             image: users.image,
+            level: users.level,
           },
         })
         .from(messages)

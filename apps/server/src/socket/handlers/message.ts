@@ -8,6 +8,7 @@ import { autoModerate } from "../../services/moderation.js";
 import { handleSocketError } from "../../lib/errors.js";
 import { createNotification } from "../../services/notifications.js";
 import { getQueue } from "../../workers/queue.js";
+import { awardXP, checkDailyStreak, XP_RATES } from "../../services/xp.js";
 
 type IOServer = Server<ClientToServerEvents, ServerToClientEvents>;
 type IOSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -49,6 +50,7 @@ export function registerMessageHandlers(io: IOServer, socket: IOSocket) {
           username: users.username,
           name: users.name,
           image: users.image,
+          level: users.level,
         })
         .from(users)
         .where(eq(users.id, userId));
@@ -64,7 +66,7 @@ export function registerMessageHandlers(io: IOServer, socket: IOSocket) {
         parentId: message.parentId,
         expiresAt: message.expiresAt?.toISOString() ?? null,
         createdAt: message.createdAt.toISOString(),
-        author: author ? { id: author.id, username: author.username, name: author.name, image: author.image } : undefined,
+        author: author ? { id: author.id, username: author.username, name: author.name, image: author.image, level: author.level } : undefined,
       };
 
       io.to(`channel:${message.channelId}`).emit("message:new", messageData);
@@ -77,6 +79,16 @@ export function registerMessageHandlers(io: IOServer, socket: IOSocket) {
           content: message.content,
         });
       }
+
+      // Award XP for message sent
+      const xpReason = parsed.data.type === "poll" ? "poll_created" : "message_sent";
+      const xpAmount = parsed.data.type === "poll" ? XP_RATES.poll_created : XP_RATES.message_sent;
+      awardXP(userId, xpAmount, xpReason).catch(() => {});
+
+      // Check daily streak and award bonus XP
+      checkDailyStreak(userId).then((bonus) => {
+        if (bonus > 0) awardXP(userId, bonus, "daily_streak").catch(() => {});
+      }).catch(() => {});
 
       // Parse @mentions and create notifications
       const mentionRegex = /@(\w+)/g;
@@ -213,6 +225,11 @@ export function registerMessageHandlers(io: IOServer, socket: IOSocket) {
         emoji,
         action,
       });
+
+      // Award XP to message author for receiving a reaction (not self-reactions)
+      if (action === "add" && msg.authorId !== userId) {
+        awardXP(msg.authorId, XP_RATES.reaction_received, "reaction_received").catch(() => {});
+      }
     }
   });
 }
