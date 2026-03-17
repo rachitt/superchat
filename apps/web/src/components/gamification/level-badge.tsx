@@ -10,7 +10,7 @@ interface LevelBadgeProps {
 
 function getBadgeColor(level: number) {
   if (level >= 20) return "from-amber-400 to-yellow-500 text-amber-950 shadow-amber-500/25";
-  if (level >= 15) return "from-violet-400 to-purple-500 text-violet-950 shadow-violet-500/25";
+  if (level >= 15) return "from-teal-400 to-purple-500 text-teal-950 shadow-teal-500/25";
   if (level >= 10) return "from-cyan-400 to-blue-500 text-cyan-950 shadow-cyan-500/25";
   if (level >= 5) return "from-emerald-400 to-green-500 text-emerald-950 shadow-emerald-500/25";
   return "from-zinc-400 to-zinc-500 text-zinc-950 shadow-zinc-500/15";

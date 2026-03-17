@@ -107,13 +107,13 @@ export function ThreadPanel({ parentId, channelId }: ThreadPanelProps) {
       <div className="flex-1 overflow-y-auto">
         {/* AI Thread Summary */}
         {(threadSummary || replyCount >= 5) && (
-          <div className="relative mx-3 mt-3 mb-1 overflow-hidden rounded-lg border border-violet-500/15 bg-violet-500/[0.04]">
-            <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-b from-violet-500/60 via-indigo-500/40 to-transparent" />
+          <div className="relative mx-3 mt-3 mb-1 overflow-hidden rounded-lg border border-teal-500/15 bg-teal-500/[0.04]">
+            <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-b from-teal-500/60 via-teal-500/40 to-transparent" />
             <div className="px-3 py-2.5">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
-                  <Sparkles className="h-3 w-3 text-violet-400" />
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-violet-400/80">
+                  <Sparkles className="h-3 w-3 text-teal-400" />
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-teal-400/80">
                     Summary
                   </span>
                 </div>
@@ -123,8 +123,8 @@ export function ThreadPanel({ parentId, channelId }: ThreadPanelProps) {
                   className={cn(
                     "flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium transition-all",
                     catchMeUpMutation.isPending
-                      ? "text-violet-400/50 cursor-wait"
-                      : "text-violet-400 hover:bg-violet-500/10 hover:text-violet-300"
+                      ? "text-teal-400/50 cursor-wait"
+                      : "text-teal-400 hover:bg-teal-500/10 hover:text-teal-300"
                   )}
                 >
                   <RefreshCw className={cn("h-2.5 w-2.5", catchMeUpMutation.isPending && "animate-spin")} />

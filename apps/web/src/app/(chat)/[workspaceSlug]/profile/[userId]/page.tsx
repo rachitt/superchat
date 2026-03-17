@@ -43,7 +43,7 @@ export default function ProfilePage() {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="text-zinc-400">Loading profile...</div>
+        <div className="text-muted-foreground">Loading profile...</div>
       </div>
     );
   }
@@ -51,7 +51,7 @@ export default function ProfilePage() {
   if (!user) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="text-zinc-400">User not found</div>
+        <div className="text-muted-foreground">User not found</div>
       </div>
     );
   }
@@ -62,13 +62,13 @@ export default function ProfilePage() {
   return (
     <div className="flex h-full flex-col overflow-y-auto">
       {/* Header banner */}
-      <div className="h-32 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600" />
+      <div className="h-32 bg-gradient-to-r from-teal-600 via-purple-600 to-pink-600" />
 
       <div className="mx-auto w-full max-w-2xl px-6">
         {/* Avatar + actions row */}
         <div className="flex items-end justify-between -mt-12">
           <div className="relative">
-            <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-zinc-900 bg-indigo-600 text-2xl font-bold text-white">
+            <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-zinc-900 bg-teal-600 text-2xl font-bold text-foreground">
               {user.image ? (
                 <img
                   src={user.image}
@@ -91,14 +91,14 @@ export default function ProfilePage() {
             {isOwnProfile ? (
               <button
                 onClick={() => setShowEdit(true)}
-                className="rounded-md border border-zinc-700 bg-zinc-800 px-4 py-1.5 text-sm text-zinc-200 hover:bg-zinc-700"
+                className="rounded-md border border-border bg-muted px-4 py-1.5 text-sm text-foreground hover:bg-accent"
               >
                 Edit Profile
               </button>
             ) : (
               <button
                 onClick={handleMessage}
-                className="rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-500"
+                className="rounded-md bg-teal-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-teal-500"
               >
                 Message
               </button>
@@ -108,22 +108,22 @@ export default function ProfilePage() {
 
         {/* User info */}
         <div className="mt-4">
-          <h1 className="text-2xl font-bold text-zinc-100">{user.name}</h1>
+          <h1 className="text-2xl font-bold text-foreground">{user.name}</h1>
           {user.username && (
-            <p className="text-sm text-zinc-400">@{user.username}</p>
+            <p className="text-sm text-muted-foreground">@{user.username}</p>
           )}
           {user.status && (
-            <p className="mt-1 text-sm text-zinc-300">{user.status}</p>
+            <p className="mt-1 text-sm text-secondary-foreground">{user.status}</p>
           )}
         </div>
 
         {/* Bio */}
         {user.bio && (
           <div className="mt-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               About
             </h3>
-            <p className="mt-1 text-sm text-zinc-300 whitespace-pre-wrap">
+            <p className="mt-1 text-sm text-secondary-foreground whitespace-pre-wrap">
               {user.bio}
             </p>
           </div>
@@ -131,16 +131,16 @@ export default function ProfilePage() {
 
         {/* Stats */}
         <div className="mt-6 grid grid-cols-3 gap-4">
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 text-center">
-            <p className="text-2xl font-bold text-indigo-400">{user.level}</p>
-            <p className="text-xs text-zinc-500">Level</p>
+          <div className="rounded-lg border border-border bg-card p-4 text-center">
+            <p className="text-2xl font-bold text-teal-400">{user.level}</p>
+            <p className="text-xs text-muted-foreground">Level</p>
           </div>
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 text-center">
-            <p className="text-2xl font-bold text-indigo-400">{user.xp}</p>
-            <p className="text-xs text-zinc-500">XP</p>
+          <div className="rounded-lg border border-border bg-card p-4 text-center">
+            <p className="text-2xl font-bold text-teal-400">{user.xp}</p>
+            <p className="text-xs text-muted-foreground">XP</p>
           </div>
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 text-center">
-            <p className="text-2xl font-bold text-indigo-400">
+          <div className="rounded-lg border border-border bg-card p-4 text-center">
+            <p className="text-2xl font-bold text-teal-400">
               {user.createdAt
                 ? new Date(user.createdAt).toLocaleDateString("en-US", {
                     month: "short",
@@ -148,19 +148,19 @@ export default function ProfilePage() {
                   })
                 : "—"}
             </p>
-            <p className="text-xs text-zinc-500">Joined</p>
+            <p className="text-xs text-muted-foreground">Joined</p>
           </div>
         </div>
 
         {/* XP progress bar */}
         <div className="mt-4">
-          <div className="flex items-center justify-between text-xs text-zinc-500">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Level {user.level}</span>
             <span>{levelProgress}/100 XP</span>
           </div>
-          <div className="mt-1 h-2 rounded-full bg-zinc-800">
+          <div className="mt-1 h-2 rounded-full bg-muted">
             <div
-              className="h-2 rounded-full bg-indigo-600 transition-all"
+              className="h-2 rounded-full bg-teal-600 transition-all"
               style={{ width: `${levelProgress}%` }}
             />
           </div>

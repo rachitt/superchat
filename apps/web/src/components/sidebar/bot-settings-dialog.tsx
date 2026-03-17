@@ -50,12 +50,12 @@ export function BotSettingsDialog({ workspaceId, onClose }: BotSettingsDialogPro
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-foreground/15 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative w-full max-w-md rounded-xl border border-border bg-popover shadow-2xl animate-float-up">
         <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
           <div className="flex items-center gap-2">
-            <Bot className="h-4 w-4 text-violet-400" />
+            <Bot className="h-4 w-4 text-teal-400" />
             <h2 className="text-sm font-semibold text-foreground">Bot Settings</h2>
           </div>
           <button onClick={onClose} className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
@@ -104,7 +104,7 @@ export function BotSettingsDialog({ workspaceId, onClose }: BotSettingsDialogPro
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Preview</p>
             <div className="flex gap-2.5">
               <Avatar className="h-6 w-6 shrink-0">
-                <AvatarFallback className="bg-gradient-to-br from-violet-600 to-indigo-600 text-[9px] font-bold text-white">
+                <AvatarFallback className="bg-gradient-to-br from-teal-600 to-teal-600 text-[9px] font-bold text-foreground">
                   <Bot className="h-3 w-3" />
                 </AvatarFallback>
               </Avatar>

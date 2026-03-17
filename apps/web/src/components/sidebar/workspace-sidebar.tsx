@@ -15,7 +15,10 @@ import {
   Hash,
   Trophy,
   Bookmark,
+  Sun,
+  Moon,
 } from "lucide-react";
+import { useTheme } from "@/hooks/use-theme";
 import { useUiStore } from "@/stores/ui-store";
 import { ChannelList } from "./channel-list";
 import { DmList } from "./dm-list";
@@ -55,6 +58,7 @@ export function WorkspaceSidebar({ workspaceId, workspaceName, channels }: Works
   const [collapsed, setCollapsed] = useState(false);
   const toggleBookmarks = useUiStore((s) => s.toggleBookmarks);
   const showBookmarks = useUiStore((s) => s.showBookmarks);
+  const { theme, toggleTheme } = useTheme();
 
   const setStats = useGamificationStore((s) => s.setStats);
 
@@ -275,6 +279,14 @@ export function WorkspaceSidebar({ workspaceId, workspaceName, channels }: Works
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={toggleTheme}>
+                    {theme === "light" ? (
+                      <Moon className="mr-2 h-4 w-4" />
+                    ) : (
+                      <Sun className="mr-2 h-4 w-4" />
+                    )}
+                    {theme === "light" ? "Dark mode" : "Light mode"}
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={async () => {
@@ -325,7 +337,7 @@ export function WorkspaceSidebar({ workspaceId, workspaceName, channels }: Works
       {showLeaderboard && (
         <div className="fixed inset-0 z-50 flex">
           <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            className="absolute inset-0 bg-foreground/10 backdrop-blur-sm"
             onClick={() => setShowLeaderboard(false)}
           />
           <div className="relative ml-auto w-80 animate-slide-in-right">

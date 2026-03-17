@@ -25,7 +25,7 @@ export function DmList({ workspaceId }: DmListProps) {
 
   return (
     <div className="mt-3 flex flex-col gap-0.5 px-2">
-      <h3 className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+      <h3 className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Direct Messages
       </h3>
       {dms.map((dm) => {
@@ -39,12 +39,12 @@ export function DmList({ workspaceId }: DmListProps) {
             onClick={() => router.push(`/${params.workspaceSlug}/${dm.channelId}`)}
             className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
               isActive
-                ? "bg-zinc-700 text-zinc-100"
-                : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                ? "bg-accent text-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
             <div className="relative shrink-0">
-              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-medium text-white">
+              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-[10px] font-medium text-foreground">
                 {dm.otherUser.image ? (
                   <img
                     src={dm.otherUser.image}

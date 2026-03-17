@@ -70,7 +70,7 @@ export function SearchDialog({ workspaceId, open, onClose }: SearchDialogProps) 
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh]">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-foreground/15 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative w-full max-w-xl rounded-xl border border-border bg-popover shadow-2xl animate-float-up">
         {/* Search input */}

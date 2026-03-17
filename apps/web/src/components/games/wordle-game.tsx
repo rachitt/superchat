@@ -32,15 +32,15 @@ function getLetterStatuses(guesses: WordleState["guesses"]): Record<string, Lett
 function cellColor(r?: LetterResult) {
   if (r === "correct") return "bg-emerald-600 border-emerald-500 text-white";
   if (r === "present") return "bg-yellow-600 border-yellow-500 text-white";
-  if (r === "absent") return "bg-zinc-700 border-zinc-600 text-zinc-300";
-  return "border-zinc-600 text-white";
+  if (r === "absent") return "bg-accent border-border text-secondary-foreground";
+  return "border-border text-white";
 }
 
 function keyColor(s?: LetterResult) {
   if (s === "correct") return "bg-emerald-600 text-white";
   if (s === "present") return "bg-yellow-600 text-white";
-  if (s === "absent") return "bg-zinc-800 text-zinc-500";
-  return "bg-zinc-700 text-zinc-200 hover:bg-zinc-600";
+  if (s === "absent") return "bg-muted text-muted-foreground";
+  return "bg-accent text-foreground hover:bg-zinc-600";
 }
 
 export function WordleGame({ game, players, userId, onAction }: WordleGameProps) {
@@ -78,23 +78,23 @@ export function WordleGame({ game, players, userId, onAction }: WordleGameProps)
 
   return (
     <div className="flex flex-col items-center gap-3 p-4">
-      <div className={`rounded-lg border px-4 py-2 text-sm ${isOver ? state.phase === "won" ? "border-emerald-600/50 bg-emerald-900/20 text-emerald-300" : "border-red-600/50 bg-red-900/20 text-red-300" : isMyTurn ? "border-emerald-600/50 bg-emerald-900/20 text-emerald-300" : "border-zinc-700 bg-zinc-800/50 text-zinc-400"}`}>
+      <div className={`rounded-lg border px-4 py-2 text-sm ${isOver ? state.phase === "won" ? "border-emerald-600/50 bg-emerald-900/20 text-emerald-300" : "border-red-600/50 bg-red-900/20 text-red-300" : isMyTurn ? "border-emerald-600/50 bg-emerald-900/20 text-emerald-300" : "border-border bg-muted/50 text-muted-foreground"}`}>
         {isOver ? (state.phase === "won" ? `🎉 "${state.targetWord}"` : `💀 "${state.targetWord}"`) : isMyTurn ? "Your turn!" : `Waiting for ${cur?.displayName || "..."}...`}
       </div>
       <div className="flex flex-col gap-1">
         {state.guesses.map((g, i) => (
           <div key={i} className="flex gap-1">{g.word.split("").map((l, j) => (<div key={j} className={`flex h-10 w-10 items-center justify-center rounded border-2 text-sm font-bold uppercase ${cellColor(g.result[j])}`}>{l}</div>))}</div>
         ))}
-        {!isOver && <div className="flex gap-1">{Array.from({ length: state.wordLength }).map((_, i) => (<div key={i} className={`flex h-10 w-10 items-center justify-center rounded border-2 text-sm font-bold uppercase ${guess[i] ? "border-zinc-400 text-white" : "border-zinc-700"}`}>{guess[i] || ""}</div>))}</div>}
+        {!isOver && <div className="flex gap-1">{Array.from({ length: state.wordLength }).map((_, i) => (<div key={i} className={`flex h-10 w-10 items-center justify-center rounded border-2 text-sm font-bold uppercase ${guess[i] ? "border-zinc-400 text-white" : "border-border"}`}>{guess[i] || ""}</div>))}</div>}
         {Array.from({ length: Math.max(0, emptyRows) }).map((_, i) => (
-          <div key={`e${i}`} className="flex gap-1">{Array.from({ length: state.wordLength }).map((_, j) => (<div key={j} className="flex h-10 w-10 items-center justify-center rounded border-2 border-zinc-800" />))}</div>
+          <div key={`e${i}`} className="flex gap-1">{Array.from({ length: state.wordLength }).map((_, j) => (<div key={j} className="flex h-10 w-10 items-center justify-center rounded border-2 border-border" />))}</div>
         ))}
       </div>
       {!isOver && isMyTurn && (
         <div className="flex flex-col items-center gap-1 mt-1">
           {KEYBOARD_ROWS.map((row, i) => (
             <div key={i} className="flex gap-1">{row.map((k) => (
-              <button key={k} onClick={() => handleKey(k)} className={`rounded px-1.5 py-2 text-xs font-bold uppercase ${k === "enter" || k === "⌫" ? "bg-zinc-600 text-zinc-200 px-2" : keyColor(letterStatuses[k])}`}>{k}</button>
+              <button key={k} onClick={() => handleKey(k)} className={`rounded px-1.5 py-2 text-xs font-bold uppercase ${k === "enter" || k === "⌫" ? "bg-zinc-600 text-foreground px-2" : keyColor(letterStatuses[k])}`}>{k}</button>
             ))}</div>
           ))}
         </div>

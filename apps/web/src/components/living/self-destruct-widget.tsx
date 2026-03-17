@@ -53,7 +53,7 @@ export function SelfDestructWidget({ messageId, payload }: SelfDestructWidgetPro
 
   return (
     <div
-      className="my-1 max-w-md rounded-lg border border-red-500/30 bg-zinc-800/80 p-3 transition-opacity duration-1000"
+      className="my-1 max-w-md rounded-lg border border-red-500/30 bg-muted/80 p-3 transition-opacity duration-1000"
       style={{ opacity }}
     >
       <div className="mb-1.5 flex items-center gap-2">
@@ -65,19 +65,19 @@ export function SelfDestructWidget({ messageId, payload }: SelfDestructWidgetPro
             urgency
               ? "animate-pulse bg-red-500/30 text-red-300"
               : expired
-                ? "bg-zinc-700 text-zinc-500"
+                ? "bg-accent text-muted-foreground"
                 : "bg-red-500/20 text-red-400"
           }`}
         >
           {formatTime()}
         </span>
       </div>
-      <p className={`text-sm break-words ${expired ? "text-zinc-600 line-through" : "text-zinc-300"}`}>
+      <p className={`text-sm break-words ${expired ? "text-zinc-600 line-through" : "text-secondary-foreground"}`}>
         {payload.content}
       </p>
       {/* Burn progress bar */}
       {!expired && totalSeconds <= 60 && (
-        <div className="mt-2 h-0.5 overflow-hidden rounded-full bg-zinc-700">
+        <div className="mt-2 h-0.5 overflow-hidden rounded-full bg-accent">
           <div
             className="h-full rounded-full bg-red-500 transition-all duration-1000 ease-linear"
             style={{ width: `${Math.min(100, (totalSeconds / 60) * 100)}%` }}

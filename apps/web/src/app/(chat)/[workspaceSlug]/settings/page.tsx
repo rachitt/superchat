@@ -22,16 +22,16 @@ export default function SettingsPage() {
   return (
     <div className="flex h-full flex-col overflow-y-auto">
       <div className="mx-auto w-full max-w-2xl px-6 py-8">
-        <h1 className="text-2xl font-bold text-zinc-100">Settings</h1>
+        <h1 className="text-2xl font-bold text-foreground">Settings</h1>
 
         {/* Profile section */}
         <section className="mt-8">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Profile
           </h2>
-          <div className="mt-3 rounded-lg border border-zinc-800 bg-zinc-900 p-4">
+          <div className="mt-3 rounded-lg border border-border bg-card p-4">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-lg font-bold text-white">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-teal-600 text-lg font-bold text-foreground">
                 {user?.image ? (
                   <img
                     src={user.image}
@@ -43,17 +43,17 @@ export default function SettingsPage() {
                 )}
               </div>
               <div className="flex-1">
-                <p className="text-sm font-medium text-zinc-100">{user?.name}</p>
+                <p className="text-sm font-medium text-foreground">{user?.name}</p>
                 {user?.username && (
-                  <p className="text-xs text-zinc-400">@{user.username}</p>
+                  <p className="text-xs text-muted-foreground">@{user.username}</p>
                 )}
                 {user?.status && (
-                  <p className="text-xs text-zinc-500">{user.status}</p>
+                  <p className="text-xs text-muted-foreground">{user.status}</p>
                 )}
               </div>
               <button
                 onClick={() => setShowEditProfile(true)}
-                className="rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-200 hover:bg-zinc-700"
+                className="rounded-md border border-border bg-muted px-3 py-1.5 text-sm text-foreground hover:bg-accent"
               >
                 Edit
               </button>
@@ -63,50 +63,50 @@ export default function SettingsPage() {
 
         {/* Status section */}
         <section className="mt-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Status
           </h2>
-          <div className="mt-3 rounded-lg border border-zinc-800 bg-zinc-900 p-4">
+          <div className="mt-3 rounded-lg border border-border bg-card p-4">
             {user?.status ? (
               <div className="flex items-center justify-between">
-                <p className="text-sm text-zinc-300">{user.status}</p>
+                <p className="text-sm text-secondary-foreground">{user.status}</p>
                 <button
                   onClick={handleStatusClear}
-                  className="text-xs text-zinc-500 hover:text-zinc-300"
+                  className="text-xs text-muted-foreground hover:text-secondary-foreground"
                 >
                   Clear status
                 </button>
               </div>
             ) : (
-              <p className="text-sm text-zinc-500">No status set</p>
+              <p className="text-sm text-muted-foreground">No status set</p>
             )}
           </div>
         </section>
 
         {/* Account info */}
         <section className="mt-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Account
           </h2>
-          <div className="mt-3 rounded-lg border border-zinc-800 bg-zinc-900 divide-y divide-zinc-800">
+          <div className="mt-3 rounded-lg border border-border bg-card divide-y divide-zinc-800">
             <div className="flex items-center justify-between p-4">
               <div>
-                <p className="text-xs text-zinc-500">Email</p>
-                <p className="text-sm text-zinc-300">{user?.email}</p>
+                <p className="text-xs text-muted-foreground">Email</p>
+                <p className="text-sm text-secondary-foreground">{user?.email}</p>
               </div>
             </div>
             <div className="flex items-center justify-between p-4">
               <div>
-                <p className="text-xs text-zinc-500">Username</p>
-                <p className="text-sm text-zinc-300">
+                <p className="text-xs text-muted-foreground">Username</p>
+                <p className="text-sm text-secondary-foreground">
                   {user?.username ? `@${user.username}` : "Not set"}
                 </p>
               </div>
             </div>
             <div className="flex items-center justify-between p-4">
               <div>
-                <p className="text-xs text-zinc-500">Member since</p>
-                <p className="text-sm text-zinc-300">
+                <p className="text-xs text-muted-foreground">Member since</p>
+                <p className="text-sm text-secondary-foreground">
                   {user?.createdAt
                     ? new Date(user.createdAt).toLocaleDateString("en-US", {
                         month: "long",
@@ -122,21 +122,21 @@ export default function SettingsPage() {
 
         {/* Gamification stats */}
         <section className="mt-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Stats
           </h2>
           <div className="mt-3 grid grid-cols-3 gap-3">
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 text-center">
-              <p className="text-2xl font-bold text-indigo-400">{user?.level ?? 1}</p>
-              <p className="text-xs text-zinc-500">Level</p>
+            <div className="rounded-lg border border-border bg-card p-4 text-center">
+              <p className="text-2xl font-bold text-teal-400">{user?.level ?? 1}</p>
+              <p className="text-xs text-muted-foreground">Level</p>
             </div>
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 text-center">
-              <p className="text-2xl font-bold text-indigo-400">{user?.xp ?? 0}</p>
-              <p className="text-xs text-zinc-500">XP</p>
+            <div className="rounded-lg border border-border bg-card p-4 text-center">
+              <p className="text-2xl font-bold text-teal-400">{user?.xp ?? 0}</p>
+              <p className="text-xs text-muted-foreground">XP</p>
             </div>
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 text-center">
-              <p className="text-2xl font-bold text-indigo-400">{user?.streakDays ?? 0}</p>
-              <p className="text-xs text-zinc-500">Streak Days</p>
+            <div className="rounded-lg border border-border bg-card p-4 text-center">
+              <p className="text-2xl font-bold text-teal-400">{user?.streakDays ?? 0}</p>
+              <p className="text-xs text-muted-foreground">Streak Days</p>
             </div>
           </div>
         </section>

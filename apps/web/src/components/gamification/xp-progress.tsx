@@ -28,7 +28,7 @@ export function XpProgress() {
 
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="relative flex-1 h-1.5 rounded-full bg-zinc-800 overflow-hidden cursor-default">
+          <div className="relative flex-1 h-1.5 rounded-full bg-muted overflow-hidden cursor-default">
             <div
               className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-emerald-500 to-cyan-400 transition-all duration-700 ease-out"
               style={{ width: `${Math.min(progress, 100)}%` }}

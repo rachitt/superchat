@@ -312,7 +312,7 @@ function WaitingView({
 
 function FinishedView({ players, onBack }: { players: GamePlayerData[]; onBack: () => void }) {
   const sorted = [...players].sort((a, b) => b.score - a.score);
-  const medals = ["text-yellow-400", "text-zinc-400", "text-orange-500"];
+  const medals = ["text-yellow-400", "text-muted-foreground", "text-orange-500"];
   return (
     <div className="flex flex-col items-center gap-5 p-6 animate-float-up">
       <div className="text-center">

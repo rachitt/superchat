@@ -55,7 +55,7 @@ export function CountdownWidget({ messageId, payload }: CountdownWidgetProps) {
   const strokeOffset = circumference * (1 - progress);
 
   return (
-    <div className="my-1 flex max-w-sm items-center gap-4 rounded-lg border border-zinc-700 bg-zinc-800/80 p-4">
+    <div className="my-1 flex max-w-sm items-center gap-4 rounded-lg border border-border bg-muted/80 p-4">
       {/* Progress ring */}
       <div className="relative shrink-0">
         <svg width="88" height="88" className="-rotate-90">
@@ -84,7 +84,7 @@ export function CountdownWidget({ messageId, payload }: CountdownWidgetProps) {
           {finished ? (
             <span className="text-xs font-bold text-red-400">DONE</span>
           ) : (
-            <span className="font-mono text-sm font-semibold text-zinc-100">
+            <span className="font-mono text-sm font-semibold text-foreground">
               {h > 0 ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` : `${m}:${String(s).padStart(2, "0")}`}
             </span>
           )}
@@ -92,8 +92,8 @@ export function CountdownWidget({ messageId, payload }: CountdownWidgetProps) {
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-zinc-100">{payload.label}</p>
-        <p className="mt-0.5 text-xs text-zinc-500">
+        <p className="text-sm font-semibold text-foreground">{payload.label}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
           {finished ? "Countdown finished" : `Ends ${new Date(payload.targetTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
         </p>
       </div>

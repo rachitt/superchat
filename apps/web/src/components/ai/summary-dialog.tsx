@@ -28,7 +28,7 @@ export function SummaryDialog({ onClose, onSummarize }: SummaryDialogProps) {
   }, [summary]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/15 backdrop-blur-sm" onClick={onClose}>
       <div
         className="mx-4 w-full max-w-lg rounded-xl border border-border bg-popover p-6 shadow-2xl animate-float-up"
         onClick={(e) => e.stopPropagation()}

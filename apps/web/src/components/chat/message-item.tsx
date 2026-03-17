@@ -267,7 +267,7 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
             <AvatarFallback className={cn(
               "text-[11px] font-semibold",
               isBot
-                ? "bg-gradient-to-br from-violet-600 to-indigo-600 text-white"
+                ? "bg-gradient-to-br from-teal-600 to-emerald-600 text-white"
                 : "bg-primary text-primary-foreground"
             )}>
               {initials}
@@ -481,7 +481,7 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
                 "rounded-md p-1.5 transition-colors disabled:opacity-50",
                 smartReplyError
                   ? "text-destructive"
-                  : "text-muted-foreground hover:bg-accent hover:text-violet-400"
+                  : "text-muted-foreground hover:bg-accent hover:text-teal-400"
               )}
             >
               <Sparkles className="h-3.5 w-3.5" />

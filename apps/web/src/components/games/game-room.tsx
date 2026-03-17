@@ -43,7 +43,7 @@ export function GameRoom({ gameId }: GameRoomProps) {
   if (!activeGame) {
     return (
       <div className="flex items-center justify-center p-8">
-        <p className="text-sm text-zinc-400">Loading game...</p>
+        <p className="text-sm text-muted-foreground">Loading game...</p>
       </div>
     );
   }
@@ -89,7 +89,7 @@ export function GameRoom({ gameId }: GameRoomProps) {
     default:
       return (
         <div className="flex items-center justify-center p-8">
-          <p className="text-sm text-zinc-400">Game type "{activeGame.gameType}" coming soon!</p>
+          <p className="text-sm text-muted-foreground">Game type "{activeGame.gameType}" coming soon!</p>
         </div>
       );
   }
@@ -117,25 +117,25 @@ function WaitingRoom({
   return (
     <div className="flex flex-col items-center gap-6 p-6">
       <div className="text-center">
-        <h2 className="text-xl font-bold text-white">Waiting for Players</h2>
-        <p className="text-sm text-zinc-400 mt-1">
+        <h2 className="text-xl font-bold text-foreground">Waiting for Players</h2>
+        <p className="text-sm text-muted-foreground mt-1">
           {GAME_EMOJI[gameType] || "🎮"} {GAME_NAME[gameType] || gameType}
         </p>
       </div>
 
       <div className="w-full max-w-xs space-y-2">
-        <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
           Players ({players.length})
         </p>
         {players.map((p) => (
           <div
             key={p.userId}
-            className="flex items-center gap-3 rounded-lg border border-zinc-700 bg-zinc-800/50 p-3"
+            className="flex items-center gap-3 rounded-lg border border-border bg-muted/50 p-3"
           >
-            <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-bold text-white">
+            <div className="h-8 w-8 rounded-full bg-teal-600 flex items-center justify-center text-sm font-bold text-foreground">
               {(p.displayName || p.username)[0]?.toUpperCase()}
             </div>
-            <span className="text-sm text-white">{p.displayName || p.username}</span>
+            <span className="text-sm text-foreground">{p.displayName || p.username}</span>
           </div>
         ))}
       </div>
@@ -150,7 +150,7 @@ function WaitingRoom({
       )}
 
       {!isCreator && (
-        <p className="text-sm text-zinc-400">Waiting for the host to start...</p>
+        <p className="text-sm text-muted-foreground">Waiting for the host to start...</p>
       )}
     </div>
   );
@@ -172,7 +172,7 @@ function GameResults({
     <div className="flex flex-col items-center gap-6 p-6">
       <div className="text-center">
         <p className="text-4xl mb-2">🏆</p>
-        <h2 className="text-xl font-bold text-white">Game Over!</h2>
+        <h2 className="text-xl font-bold text-foreground">Game Over!</h2>
       </div>
 
       <div className="w-full max-w-xs space-y-2">
@@ -182,23 +182,23 @@ function GameResults({
             className={`flex items-center justify-between rounded-lg border p-3 ${
               i === 0
                 ? "border-yellow-600/50 bg-yellow-900/20"
-                : "border-zinc-700 bg-zinc-800/50"
+                : "border-border bg-muted/50"
             }`}
           >
             <div className="flex items-center gap-3">
               <span className="text-xl">{medals[i] || `#${i + 1}`}</span>
-              <span className="text-sm font-medium text-white">
+              <span className="text-sm font-medium text-foreground">
                 {p.displayName || p.username}
               </span>
             </div>
-            <span className="text-sm font-bold text-indigo-400">{p.score} pts</span>
+            <span className="text-sm font-bold text-teal-400">{p.score} pts</span>
           </div>
         ))}
       </div>
 
       <button
         onClick={onClose}
-        className="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-700 transition-colors"
+        className="rounded-lg border border-border bg-muted px-4 py-2 text-sm text-secondary-foreground hover:bg-accent transition-colors"
       >
         Back to Lobby
       </button>

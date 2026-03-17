@@ -91,10 +91,10 @@ export function GameLobby({ channelId, workspaceId }: GameLobbyProps) {
   return (
     <div className="flex flex-col gap-4 p-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-white">Games</h2>
+        <h2 className="text-lg font-semibold text-foreground">Games</h2>
         <button
           onClick={() => setCreating(!creating)}
-          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 transition-colors"
+          className="rounded-lg bg-teal-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-500 transition-colors"
         >
           {creating ? "Cancel" : "New Game"}
         </button>
@@ -107,8 +107,8 @@ export function GameLobby({ channelId, workspaceId }: GameLobbyProps) {
       )}
 
       {creating && (
-        <div className="rounded-xl border border-zinc-700 bg-zinc-800/50 p-4 space-y-3">
-          <p className="text-sm font-medium text-zinc-300">Choose a game:</p>
+        <div className="rounded-xl border border-border bg-muted/50 p-4 space-y-3">
+          <p className="text-sm font-medium text-secondary-foreground">Choose a game:</p>
           <div className="grid grid-cols-2 gap-2">
             {GAME_TYPES.map((type) => {
               const info = GAME_LABELS[type];
@@ -118,13 +118,13 @@ export function GameLobby({ channelId, workspaceId }: GameLobbyProps) {
                   onClick={() => setSelectedType(type)}
                   className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors ${
                     selectedType === type
-                      ? "border-indigo-500 bg-indigo-500/10"
-                      : "border-zinc-700 bg-zinc-800 hover:border-zinc-600"
+                      ? "border-teal-500 bg-teal-500/10"
+                      : "border-border bg-muted hover:border-border"
                   }`}
                 >
                   <span className="text-xl">{info.emoji}</span>
-                  <span className="text-sm font-medium text-white">{info.name}</span>
-                  <span className="text-xs text-zinc-400">{info.description}</span>
+                  <span className="text-sm font-medium text-foreground">{info.name}</span>
+                  <span className="text-xs text-muted-foreground">{info.description}</span>
                 </button>
               );
             })}
@@ -132,7 +132,7 @@ export function GameLobby({ channelId, workspaceId }: GameLobbyProps) {
           <button
             onClick={handleCreate}
             disabled={createMutation.isPending || !workspaceId}
-            className="w-full rounded-lg bg-indigo-600 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+            className="w-full rounded-lg bg-teal-600 py-2 text-sm font-medium text-white hover:bg-teal-500 disabled:opacity-50 transition-colors"
           >
             {createMutation.isPending ? "Creating..." : `Create ${GAME_LABELS[selectedType].name} Game`}
           </button>
@@ -140,22 +140,22 @@ export function GameLobby({ channelId, workspaceId }: GameLobbyProps) {
       )}
 
       {isLoading ? (
-        <div className="text-sm text-zinc-400">Loading games...</div>
+        <div className="text-sm text-muted-foreground">Loading games...</div>
       ) : channelGames && channelGames.length > 0 ? (
         <div className="space-y-2">
-          <p className="text-sm font-medium text-zinc-400">Open Games</p>
+          <p className="text-sm font-medium text-muted-foreground">Open Games</p>
           {channelGames.map((game) => {
             const info = GAME_LABELS[game.gameType as GameType];
             return (
               <div
                 key={game.id}
-                className="flex items-center justify-between rounded-lg border border-zinc-700 bg-zinc-800/50 p-3"
+                className="flex items-center justify-between rounded-lg border border-border bg-muted/50 p-3"
               >
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">{info?.emoji}</span>
                   <div>
-                    <p className="text-sm font-medium text-white">{info?.name}</p>
-                    <p className="text-xs text-zinc-400">Waiting for players...</p>
+                    <p className="text-sm font-medium text-foreground">{info?.name}</p>
+                    <p className="text-xs text-muted-foreground">Waiting for players...</p>
                   </div>
                 </div>
                 <button
@@ -171,10 +171,10 @@ export function GameLobby({ channelId, workspaceId }: GameLobbyProps) {
         </div>
       ) : (
         !creating && (
-          <div className="rounded-xl border border-zinc-700/50 bg-zinc-800/30 p-8 text-center">
+          <div className="rounded-xl border border-border/50 bg-muted/30 p-8 text-center">
             <p className="text-3xl mb-2">🎮</p>
-            <p className="text-sm text-zinc-400">No games in this channel yet.</p>
-            <p className="text-xs text-zinc-500 mt-1">Create one to get started!</p>
+            <p className="text-sm text-muted-foreground">No games in this channel yet.</p>
+            <p className="text-xs text-muted-foreground mt-1">Create one to get started!</p>
           </div>
         )
       )}

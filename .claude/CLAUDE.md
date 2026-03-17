@@ -45,6 +45,12 @@ SuperChat — production-grade chat app with AI (@SuperBot), games, and Living M
 - Ruthlessly iterate on these lessons until mistake rate drops
 - Review lessons at session start for relevant project
 
+## UI Design
+
+- Use the `design-skill` for ALL frontend UI work — it references images in `references/images/` to maintain visual consistency
+- Always study reference designs before building new components
+- Dark theme first, shadcn/ui base, Tailwind theme tokens only
+
 ## Verification Before Done
 
 - Never mark a task complete without proving it works

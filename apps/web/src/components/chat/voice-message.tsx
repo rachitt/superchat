@@ -88,7 +88,7 @@ export function VoiceMessage({ src }: VoiceMessageProps) {
       ctx.roundRect(x, y, barWidth, barH, 1);
 
       if (barProgress <= progress) {
-        ctx.fillStyle = "#a78bfa"; // violet-400
+        ctx.fillStyle = "#a78bfa"; // teal-400
       } else {
         ctx.fillStyle = "rgba(161, 161, 170, 0.35)"; // zinc-400/35
       }
@@ -176,8 +176,8 @@ export function VoiceMessage({ src }: VoiceMessageProps) {
         className={cn(
           "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all",
           playing
-            ? "bg-violet-500 text-white shadow-md shadow-violet-500/25"
-            : "bg-violet-500/15 text-violet-400 hover:bg-violet-500/25"
+            ? "bg-teal-500 text-white shadow-md shadow-teal-500/25"
+            : "bg-teal-500/15 text-teal-400 hover:bg-teal-500/25"
         )}
       >
         {playing ? (

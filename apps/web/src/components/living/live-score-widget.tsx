@@ -26,16 +26,16 @@ export function LiveScoreWidget({ messageId, payload }: LiveScoreWidgetProps) {
   const maxScore = Math.max(...payload.teams.map((t) => t.score), 1);
 
   return (
-    <div className="my-1 max-w-sm rounded-lg border border-zinc-700 bg-zinc-800/80 p-3">
+    <div className="my-1 max-w-sm rounded-lg border border-border bg-muted/80 p-3">
       <div className="mb-2 flex items-center justify-between">
-        <p className="text-sm font-semibold text-zinc-100">{payload.title}</p>
+        <p className="text-sm font-semibold text-foreground">{payload.title}</p>
         {isLive ? (
           <span className="flex items-center gap-1 rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-red-400">
             <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
             LIVE
           </span>
         ) : (
-          <span className="rounded bg-zinc-700 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
+          <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
             FINAL
           </span>
         )}
@@ -50,18 +50,18 @@ export function LiveScoreWidget({ messageId, payload }: LiveScoreWidgetProps) {
           return (
             <div key={i} className="flex items-center gap-3">
               <span
-                className={`w-24 truncate text-sm ${isLeading ? "font-semibold text-zinc-100" : "text-zinc-400"}`}
+                className={`w-24 truncate text-sm ${isLeading ? "font-semibold text-foreground" : "text-muted-foreground"}`}
               >
                 {team.name}
               </span>
-              <div className="relative h-5 flex-1 overflow-hidden rounded bg-zinc-700/50">
+              <div className="relative h-5 flex-1 overflow-hidden rounded bg-accent/50">
                 <div
                   className="h-full rounded transition-all duration-500"
                   style={{ width: `${barWidth}%`, backgroundColor: teamColor }}
                 />
               </div>
               <span
-                className={`w-8 text-right font-mono text-sm ${isLeading ? "font-bold text-zinc-100" : "text-zinc-400"}`}
+                className={`w-8 text-right font-mono text-sm ${isLeading ? "font-bold text-foreground" : "text-muted-foreground"}`}
               >
                 {team.score}
               </span>

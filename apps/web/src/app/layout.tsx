@@ -26,9 +26,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function(){
+            var t = localStorage.getItem('superchat-theme');
+            if (t === 'dark') document.documentElement.classList.add('dark');
+          })();
+        `}} />
+      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased noise-overlay`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
           <TooltipProvider delay={300}>
@@ -36,15 +44,8 @@ export default function RootLayout({
           </TooltipProvider>
         </Providers>
         <Toaster
-          theme="dark"
+          theme="system"
           position="bottom-right"
-          toastOptions={{
-            style: {
-              background: "oklch(0.17 0.005 285)",
-              border: "1px solid oklch(0.24 0.008 285)",
-              color: "oklch(0.88 0.005 285)",
-            },
-          }}
         />
       </body>
     </html>

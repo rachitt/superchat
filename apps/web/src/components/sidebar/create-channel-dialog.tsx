@@ -30,7 +30,7 @@ export function CreateChannelDialog({ workspaceId, onClose }: CreateChannelDialo
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/15 backdrop-blur-sm" onClick={onClose}>
       <div
         className="w-full max-w-sm rounded-xl border border-border bg-popover p-6 shadow-2xl animate-float-up"
         onClick={(e) => e.stopPropagation()}
