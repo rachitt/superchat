@@ -38,6 +38,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <div className="gradient-accent-bar" />
         <Providers>
           <TooltipProvider delay={300}>
             {children}

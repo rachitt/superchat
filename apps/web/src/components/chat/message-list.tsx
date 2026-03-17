@@ -115,13 +115,13 @@ export function MessageList({ channelId, loading }: MessageListProps) {
       <div className="mt-auto flex flex-col py-2">
         {topLevelMessages.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 animate-float-up">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent">
-              <MessageSquare className="h-8 w-8 text-muted-foreground" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
+              <MessageSquare className="h-8 w-8 text-primary/60" />
             </div>
-            <h3 className="mt-4 text-lg font-semibold text-foreground">
+            <h3 className="mt-5 text-lg font-semibold text-foreground">
               No messages yet
             </h3>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1.5 text-sm text-muted-foreground max-w-xs text-center">
               Start the conversation by sending a message below.
             </p>
           </div>
@@ -135,12 +135,12 @@ export function MessageList({ channelId, loading }: MessageListProps) {
           return (
             <div key={msg.id}>
               {showDateSep && (
-                <div className="flex items-center gap-3 px-5 py-3">
-                  <div className="flex-1 border-t border-border" />
-                  <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
+                <div className="flex items-center gap-4 px-5 py-4">
+                  <div className="flex-1 border-t border-border/50" />
+                  <span className="shrink-0 rounded-full bg-muted px-3 py-0.5 text-[11px] font-medium text-muted-foreground">
                     {msgDate}
                   </span>
-                  <div className="flex-1 border-t border-border" />
+                  <div className="flex-1 border-t border-border/50" />
                 </div>
               )}
               {msg.type === "system" ? (

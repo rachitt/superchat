@@ -36,5 +36,5 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
   if (!session) return null;
 
-  return <div className="flex h-screen">{children}</div>;
+  return <div className="flex h-[calc(100vh-3px)]">{children}</div>;
 }

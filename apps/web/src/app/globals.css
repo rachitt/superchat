@@ -129,6 +129,19 @@
   }
 }
 
+/* ── Gradient accent bar (Cuboid-inspired) ── */
+.gradient-accent-bar {
+  height: 3px;
+  background: linear-gradient(90deg, oklch(0.72 0.16 310), oklch(0.62 0.17 162), oklch(0.68 0.14 200), oklch(0.72 0.16 310));
+  background-size: 200% 100%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
 /* ── Custom scrollbar ── */
 @layer base {
   * {

@@ -147,9 +147,9 @@ export default function ChannelPage() {
     <div className="flex h-full">
       <div className="flex flex-1 flex-col">
         {/* Channel header */}
-        <header className="flex h-13 shrink-0 items-center justify-between border-b border-border px-4">
-          <div className="flex items-center gap-2 min-w-0">
-            <Hash className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-border/60 px-5">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Hash className="h-4.5 w-4.5 shrink-0 text-primary/60" />
             <h2 className="text-[15px] font-semibold text-foreground truncate">
               {channelName}
             </h2>

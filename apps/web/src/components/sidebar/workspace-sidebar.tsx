@@ -78,12 +78,12 @@ export function WorkspaceSidebar({ workspaceId, workspaceName, channels }: Works
   return (
     <>
       <aside
-        className={`flex h-full flex-col border-r border-border bg-sidebar transition-all duration-300 ${
-          collapsed ? "w-16" : "w-64"
+        className={`flex h-full flex-col border-r border-border/60 bg-sidebar transition-all duration-300 ${
+          collapsed ? "w-16" : "w-[272px]"
         }`}
       >
         {/* Workspace header */}
-        <div className="flex h-13 items-center justify-between border-b border-border px-3">
+        <div className="flex h-14 items-center justify-between border-b border-border/60 px-3">
           {!collapsed && (
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-accent">

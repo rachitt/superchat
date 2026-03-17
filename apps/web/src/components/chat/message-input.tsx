@@ -346,11 +346,11 @@ export function MessageInput({ channelId }: MessageInputProps) {
     : null;
 
   return (
-    <div className="border-t border-border px-4 pb-4 pt-2">
+    <div className="border-t border-border/60 px-5 pb-5 pt-3">
       {!isUserTyping && latestMessageId && (
         <SmartReplyBar channelId={channelId} messageId={latestMessageId} />
       )}
-      <div className="relative rounded-xl border border-border bg-card transition-colors focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/10">
+      <div className="relative rounded-2xl border border-border/70 bg-card shadow-sm transition-all focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10 focus-within:shadow-md">
         {/* Slash command popover */}
         {slashOpen && (
           <SlashCommandPopover

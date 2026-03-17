@@ -246,10 +246,10 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
     <div
       data-message-id={message.id}
       className={cn(
-        "group relative flex gap-3 px-5 py-1.5 transition-colors duration-200",
+        "group relative flex gap-3 px-5 py-2.5 transition-colors duration-200",
         highlighted && "animate-highlight-pulse",
         expired && "animate-fade-out-message",
-        "hover:bg-accent/30"
+        isOwn ? "hover:bg-primary/[0.04]" : "hover:bg-accent/40"
       )}
     >
       {/* Avatar */}
@@ -414,7 +414,7 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
       </div>
 
       {/* Hover action toolbar */}
-      <div className="message-actions absolute -top-3.5 right-4 flex items-center gap-px rounded-lg border border-border bg-card p-0.5 shadow-md">
+      <div className="message-actions absolute -top-3.5 right-4 flex items-center gap-px rounded-xl border border-border/60 bg-card p-0.5 shadow-lg shadow-foreground/5">
         <Tooltip>
           <TooltipTrigger asChild>
             <button
