@@ -8,6 +8,7 @@ import {
   timestamp,
   jsonb,
   index,
+  uniqueIndex,
   customType,
 } from "drizzle-orm/pg-core";
 import { channels } from "./channels";
@@ -68,3 +69,21 @@ export const attachments = pgTable("attachments", {
   fileType: varchar("file_type", { length: 100 }),
   fileSize: integer("file_size"),
 });
+
+export const bookmarks = pgTable(
+  "bookmarks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    messageId: uuid("message_id")
+      .notNull()
+      .references(() => messages.id, { onDelete: "cascade" }),
+    note: text("note"),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("bookmarks_user_message_idx").on(table.userId, table.messageId),
+  ]
+);

@@ -2,14 +2,18 @@
 
 import { useParams } from "next/navigation";
 import { WorkspaceSidebar } from "@/components/sidebar/workspace-sidebar";
+import { BookmarkPanel } from "@/components/chat/bookmark-panel";
 import { useTRPC } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
+import { useUiStore } from "@/stores/ui-store";
 
 export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const params = useParams<{ workspaceSlug: string }>();
   const trpc = useTRPC();
+  const showBookmarks = useUiStore((s) => s.showBookmarks);
+  const setShowBookmarks = useUiStore((s) => s.setShowBookmarks);
 
   const { data: workspace, isLoading: loadingWorkspace } = useQuery(
     trpc.workspace.getBySlug.queryOptions({ slug: params.workspaceSlug })
@@ -68,6 +72,9 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
         }))}
       />
       <main className="flex flex-1 flex-col overflow-hidden">{children}</main>
+      {showBookmarks && (
+        <BookmarkPanel onClose={() => setShowBookmarks(false)} />
+      )}
     </>
   );
 }

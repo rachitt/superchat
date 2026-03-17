@@ -16,8 +16,16 @@ type IOServer = Server<ClientToServerEvents, ServerToClientEvents>;
 
 const log = createChildLogger({ module: "socket" });
 
+let ioInstance: IOServer | null = null;
+
+export function getIO(): IOServer {
+  if (!ioInstance) throw new Error("Socket.IO not initialized");
+  return ioInstance;
+}
+
 export function setupSocketHandlers(io: IOServer, auth: typeof Auth) {
   setXpIO(io);
+  ioInstance = io;
 
   io.use(async (socket, next) => {
     try {

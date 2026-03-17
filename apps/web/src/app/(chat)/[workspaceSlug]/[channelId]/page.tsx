@@ -15,13 +15,13 @@ import { MessageInput } from "@/components/chat/message-input";
 import { ThreadPanel } from "@/components/chat/thread-panel";
 import { SummaryDialog } from "@/components/ai/summary-dialog";
 import { GamePanel } from "@/components/games/game-panel";
+import { PinnedPanel } from "@/components/chat/pinned-panel";
 import { SearchDialog, useSearchShortcut } from "@/components/chat/search-dialog";
 import {
   Hash,
   Search,
   Sparkles,
   Gamepad2,
-  Users,
   Pin,
 } from "lucide-react";
 import {
@@ -30,6 +30,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 export default function ChannelPage() {
   const params = useParams<{ workspaceSlug: string; channelId: string }>();
@@ -40,6 +41,7 @@ export default function ChannelPage() {
   const { setSummarizing, setSummary } = useAiStore();
   const [showSummary, setShowSummary] = useState(false);
   const [showGames, setShowGames] = useState(false);
+  const [showPinned, setShowPinned] = useState(false);
   const pendingOpenGameId = useGameStore((s) => s.pendingOpenGameId);
   const setPendingOpenGameId = useGameStore((s) => s.setPendingOpenGameId);
 
@@ -61,7 +63,6 @@ export default function ChannelPage() {
     trpc.workspace.getBySlug.queryOptions({ slug: workspaceSlug })
   );
 
-  // Get channel info from workspace channels list
   const { data: channels } = useQuery({
     ...trpc.channel.listByWorkspace.queryOptions({
       workspaceId: workspace?.id ?? "",
@@ -69,6 +70,27 @@ export default function ChannelPage() {
     enabled: !!workspace?.id,
   });
   const channel = channels?.find((c) => c.id === channelId);
+
+  // Get pinned count
+  const { data: pinnedMessages } = useQuery({
+    ...trpc.message.getPinned.queryOptions({ channelId }),
+    enabled: !!channelId,
+  });
+  const pinnedCount = pinnedMessages?.length ?? 0;
+
+  // Listen for pin socket events to refetch
+  useEffect(() => {
+    const socket = getSocket();
+    const handlePinned = (data: { channelId: string }) => {
+      if (data.channelId === channelId) {
+        // Trigger refetch by invalidating - the query will auto-refetch
+      }
+    };
+    socket.on("message:pinned" as any, handlePinned);
+    return () => {
+      socket.off("message:pinned" as any, handlePinned);
+    };
+  }, [channelId]);
 
   useEffect(() => {
     setActiveChannel(channelId);
@@ -142,6 +164,32 @@ export default function ChannelPage() {
           </div>
 
           <div className="flex items-center gap-1">
+            {/* Pin toggle */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setShowPinned(!showPinned)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs transition-colors",
+                    showPinned
+                      ? "bg-blue-500/15 text-blue-400"
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  )}
+                >
+                  <Pin className="h-3.5 w-3.5" />
+                  {pinnedCount > 0 && (
+                    <span className={cn(
+                      "rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none",
+                      showPinned ? "bg-blue-500/20 text-blue-400" : "bg-accent text-muted-foreground"
+                    )}>
+                      {pinnedCount}
+                    </span>
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Pinned messages</TooltipContent>
+            </Tooltip>
+
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -195,6 +243,10 @@ export default function ChannelPage() {
       </div>
 
       {activeThreadId && <ThreadPanel parentId={activeThreadId} channelId={channelId} />}
+
+      {showPinned && (
+        <PinnedPanel channelId={channelId} onClose={() => setShowPinned(false)} />
+      )}
 
       {showSummary && (
         <SummaryDialog

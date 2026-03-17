@@ -14,7 +14,9 @@ import {
   Bot,
   Hash,
   Trophy,
+  Bookmark,
 } from "lucide-react";
+import { useUiStore } from "@/stores/ui-store";
 import { ChannelList } from "./channel-list";
 import { DmList } from "./dm-list";
 import { CreateChannelDialog } from "./create-channel-dialog";
@@ -51,6 +53,8 @@ export function WorkspaceSidebar({ workspaceId, workspaceName, channels }: Works
   const [showBotSettings, setShowBotSettings] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const toggleBookmarks = useUiStore((s) => s.toggleBookmarks);
+  const showBookmarks = useUiStore((s) => s.showBookmarks);
 
   const setStats = useGamificationStore((s) => s.setStats);
 
@@ -108,17 +112,34 @@ export function WorkspaceSidebar({ workspaceId, workspaceName, channels }: Works
           )}
           <div className="flex items-center gap-0.5">
             {!collapsed && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setShowLeaderboard(true)}
-                    className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-amber-400"
-                  >
-                    <Trophy className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Leaderboard</TooltipContent>
-              </Tooltip>
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={toggleBookmarks}
+                      className={`rounded-md p-1.5 transition-colors ${
+                        showBookmarks
+                          ? "text-amber-400 bg-amber-500/10"
+                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                      }`}
+                    >
+                      <Bookmark className="h-4 w-4" fill={showBookmarks ? "currentColor" : "none"} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Saved messages</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setShowLeaderboard(true)}
+                      className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-amber-400"
+                    >
+                      <Trophy className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Leaderboard</TooltipContent>
+                </Tooltip>
+              </>
             )}
             <NotificationBell />
           </div>

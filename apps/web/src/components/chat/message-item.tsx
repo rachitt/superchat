@@ -10,7 +10,7 @@ import { useAiStore } from "@/stores/ai-store";
 import { usePresenceStore } from "@/stores/presence-store";
 import { useSession } from "@/lib/auth-client";
 import { useTRPC } from "@/lib/trpc";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { SmartReplyBar } from "../ai/smart-reply-bar";
 import { OnlineIndicator } from "../ui/online-indicator";
@@ -21,6 +21,7 @@ import { DynamicCardWidget } from "../living/dynamic-card-widget";
 import { LiveScoreWidget } from "../living/live-score-widget";
 import { LevelBadge } from "../gamification/level-badge";
 import { EmojiPickerPopover, getFrequentEmojis, trackEmojiUsage } from "../gamification/emoji-picker-popover";
+import { VoiceMessage } from "./voice-message";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Tooltip,
@@ -35,6 +36,8 @@ import {
   Trash2,
   Clock,
   Plus,
+  Bookmark,
+  Pin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +57,9 @@ interface MessageItemProps {
 }
 
 const EMPTY_REACTIONS: never[] = [];
+
+// Detect voice message from content pattern: 🎤 [Voice message](url)
+const VOICE_MSG_REGEX = /^🎤\s*\[Voice message\]\((https?:\/\/[^\s)]+)\)$/;
 
 function formatCountdown(expiresAt: string): { remaining: string; expired: boolean } {
   const diff = new Date(expiresAt).getTime() - Date.now();
@@ -150,12 +156,31 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
   const [loadingReplies, setLoadingReplies] = useState(false);
   const [smartReplyError, setSmartReplyError] = useState(false);
   const [recentlyReacted, setRecentlyReacted] = useState<string | null>(null);
+  const [isBookmarked, setIsBookmarked] = useState(false);
   const { remaining: expiryRemaining, expired } = useCountdown(message.expiresAt);
 
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const smartReplyMutation = useMutation(trpc.ai.smartReplies.mutationOptions());
 
   const frequentEmojis = useMemo(() => getFrequentEmojis(), []);
+
+  const bookmarkMutation = useMutation({
+    ...trpc.bookmark.toggle.mutationOptions(),
+    onSuccess: (data) => {
+      setIsBookmarked(data.bookmarked);
+      queryClient.invalidateQueries({ queryKey: trpc.bookmark.list.queryKey() });
+    },
+  });
+
+  const pinMutation = useMutation({
+    ...trpc.message.pin.mutationOptions(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: trpc.message.getPinned.queryKey({ channelId: message.channelId }),
+      });
+    },
+  });
 
   const isOwn = session?.user?.id === message.authorId;
   const isPoll = message.type === "poll";
@@ -164,6 +189,10 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
   const displayName = isBot ? "SuperBot" : isLivingMessage ? "SuperBot" : (message.author?.name ?? message.authorId.slice(0, 8));
   const initials = isBot ? "AI" : displayName.slice(0, 2).toUpperCase();
   const authorLevel = message.author?.level ?? 1;
+
+  // Voice message detection
+  const voiceMatch = useMemo(() => VOICE_MSG_REGEX.exec(message.content), [message.content]);
+  const isVoiceMessage = !!voiceMatch;
 
   const time = new Date(message.createdAt).toLocaleTimeString([], {
     hour: "2-digit",
@@ -334,6 +363,8 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
             messageId={message.id}
             payload={message.payload as any}
           />
+        ) : isVoiceMessage ? (
+          <VoiceMessage src={voiceMatch![1]} />
         ) : hasMarkdown ? (
           <div className="mt-0.5 text-[14px] text-secondary-foreground leading-relaxed">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
@@ -409,6 +440,37 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
             <TooltipContent>Reply in thread</TooltipContent>
           </Tooltip>
         )}
+
+        {/* Bookmark */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => bookmarkMutation.mutate({ messageId: message.id })}
+              className={cn(
+                "rounded-md p-1.5 transition-colors",
+                isBookmarked
+                  ? "text-amber-400 hover:bg-amber-500/10"
+                  : "text-muted-foreground hover:bg-accent hover:text-amber-400"
+              )}
+            >
+              <Bookmark className="h-3.5 w-3.5" fill={isBookmarked ? "currentColor" : "none"} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{isBookmarked ? "Remove bookmark" : "Bookmark"}</TooltipContent>
+        </Tooltip>
+
+        {/* Pin */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => pinMutation.mutate({ messageId: message.id, pinned: true })}
+              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-blue-400"
+            >
+              <Pin className="h-3.5 w-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Pin message</TooltipContent>
+        </Tooltip>
 
         <Tooltip>
           <TooltipTrigger asChild>
