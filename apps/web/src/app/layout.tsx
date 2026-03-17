@@ -31,7 +31,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased noise-overlay`}
       >
         <Providers>
-          <TooltipProvider delayDuration={300}>
+          <TooltipProvider delay={300}>
             {children}
           </TooltipProvider>
         </Providers>
