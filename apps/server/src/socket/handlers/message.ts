@@ -1,5 +1,5 @@
 import type { Server, Socket } from "socket.io";
-import { eq, and, or } from "drizzle-orm";
+import { eq, and, or, sql, isNull } from "drizzle-orm";
 import type { ClientToServerEvents, ServerToClientEvents } from "@superchat/shared";
 import { sendMessageSchema } from "@superchat/shared";
 import { db } from "../../db/index.js";
@@ -8,6 +8,7 @@ import { autoModerate } from "../../services/moderation.js";
 import { handleSocketError } from "../../lib/errors.js";
 import { createNotification } from "../../services/notifications.js";
 import { getQueue } from "../../workers/queue.js";
+import { isSlashCommand, executeSlashCommand } from "../../services/slash-commands.js";
 
 type IOServer = Server<ClientToServerEvents, ServerToClientEvents>;
 type IOSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -28,6 +29,16 @@ export function registerMessageHandlers(io: IOServer, socket: IOSocket) {
       if (flagReason) {
         socket.emit("error", { message: `Message blocked: ${flagReason}`, code: "MODERATION_ERROR" });
         return;
+      }
+
+      // Slash command interception — route to slash command service instead of saving
+      if (isSlashCommand(parsed.data.content)) {
+        const handled = await executeSlashCommand(parsed.data.content, {
+          channelId: parsed.data.channelId,
+          userId,
+          io,
+        });
+        if (handled) return;
       }
 
       const [message] = await db
@@ -110,7 +121,7 @@ export function registerMessageHandlers(io: IOServer, socket: IOSocket) {
         }
       }
 
-      // Notify parent message author on replies
+      // Notify parent message author on replies + trigger thread summary
       if (parsed.data.parentId) {
         const [parent] = await db
           .select({ authorId: messages.authorId })
@@ -127,6 +138,16 @@ export function registerMessageHandlers(io: IOServer, socket: IOSocket) {
             body: parsed.data.content.slice(0, 200),
             data: { channelId: message.channelId, messageId: message.id, parentId: parsed.data.parentId },
           }).catch(() => {});
+        }
+
+        // Check reply count and trigger auto thread summary at 10, 20, 30, etc.
+        const [{ count }] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(messages)
+          .where(and(eq(messages.parentId, parsed.data.parentId), isNull(messages.deletedAt)));
+
+        if (count > 0 && count % 10 === 0) {
+          getQueue("thread-summary").add("summarize", { parentId: parsed.data.parentId });
         }
       }
     } catch (err) {

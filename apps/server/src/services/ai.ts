@@ -93,7 +93,7 @@ export async function streamAiChat(opts: StreamAiChatOptions): Promise<any> {
 
   // Instruct the model to use tools rather than describe actions
   if (tools) {
-    finalSystemPrompt += `\n\nIMPORTANT: When the user asks you to create a poll, start a game, search messages, pin a message, or get the time — you MUST call the appropriate tool. Do NOT describe what you would do or say "I've created a poll" without actually calling the tool. Always use tool calls for actions. After calling a tool, ALWAYS respond with a brief, friendly message telling the user what you did (e.g. "Here's your poll!" or "It's currently 3:45 PM.").`;
+    finalSystemPrompt += `\n\nIMPORTANT: When the user asks you to create a poll, start a game, search messages, pin a message, get the time, or generate/draw an image — you MUST call the appropriate tool. Do NOT describe what you would do or say "I've created a poll" without actually calling the tool. Always use tool calls for actions. After calling a tool, ALWAYS respond with a brief, friendly message telling the user what you did (e.g. "Here's your poll!" or "It's currently 3:45 PM."). For image generation, use the generateImage tool when the user asks to draw, create, generate, or make an image/picture/illustration. If the user refines a previous image request in a thread, modify the original prompt accordingly.`;
   }
 
   // Load user memories into system prompt

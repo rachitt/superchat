@@ -1,13 +1,19 @@
 import { tool } from "ai";
 import { z } from "zod";
+import { randomUUID } from "node:crypto";
 import { eq, and, desc, isNull, like, sql } from "drizzle-orm";
 import type { Server } from "socket.io";
 import type { ServerToClientEvents, ClientToServerEvents } from "@superchat/shared";
 import { db } from "../db/index.js";
-import { messages } from "../db/schema/messages.js";
+import { messages, attachments } from "../db/schema/messages.js";
 import { user as users } from "../db/schema/auth.js";
 import { games } from "../db/schema/games.js";
 import { channels } from "../db/schema/channels.js";
+import { getUploadUrl, getPublicUrl } from "../lib/storage.js";
+import { createChildLogger } from "../lib/logger.js";
+import OpenAI from "openai";
+
+const log = createChildLogger({ module: "ai-tools" });
 
 type IOServer = Server<ClientToServerEvents, ServerToClientEvents>;
 
@@ -198,5 +204,88 @@ export function buildAiTools(ctx: ToolContext) {
     },
   });
 
-  return { createPoll, startGame, searchMessages, pinMessage, getCurrentTime };
+  const generateImage = tool({
+    description: "Generate an image based on a text prompt. Use this when the user asks to draw, create, generate, or make an image/picture/illustration.",
+    inputSchema: z.object({
+      prompt: z.string().describe("Detailed description of the image to generate"),
+      style: z.enum(["natural", "vivid"]).default("vivid").describe("Image style: natural for realistic, vivid for creative"),
+    }),
+    execute: async ({ prompt, style }: { prompt: string; style: "natural" | "vivid" }) => {
+      return once("generateImage", async () => {
+        const apiKey = process.env.OPENAI_API_KEY;
+        if (!apiKey) return { success: false as const, error: "OpenAI API key not configured" };
+
+        try {
+          const openaiClient = new OpenAI({ apiKey });
+          log.info({ prompt, style }, "Generating image with DALL-E");
+
+          const response = await openaiClient.images.generate({
+            model: "gpt-image-1",
+            prompt,
+            n: 1,
+            size: "1024x1024",
+            quality: "auto",
+          });
+
+          const imageData = response.data?.[0];
+          if (!imageData?.b64_json) {
+            return { success: false as const, error: "No image data returned" };
+          }
+
+          // Upload to R2
+          const imageBuffer = Buffer.from(imageData.b64_json, "base64");
+          const key = `generated/${ctx.userId}/${randomUUID()}.png`;
+          const uploadUrl = await getUploadUrl(key, "image/png");
+
+          await fetch(uploadUrl, {
+            method: "PUT",
+            body: imageBuffer,
+            headers: { "Content-Type": "image/png" },
+          });
+
+          const publicUrl = getPublicUrl(key);
+
+          // Create a message with the image
+          const [msg] = await db
+            .insert(messages)
+            .values({
+              channelId: ctx.channelId,
+              authorId: ctx.userId,
+              type: "system",
+              content: `![Generated image](${publicUrl})\n\n*Prompt: "${prompt}"*`,
+              createdAt: sql`now() + interval '3 seconds'`,
+            })
+            .returning();
+
+          // Save attachment record
+          await db.insert(attachments).values({
+            messageId: msg.id,
+            fileName: `generated-${randomUUID().slice(0, 8)}.png`,
+            fileUrl: publicUrl,
+            fileType: "image/png",
+          });
+
+          ctx.io.to(`channel:${ctx.channelId}`).emit("message:new", {
+            id: msg.id,
+            channelId: msg.channelId,
+            authorId: msg.authorId,
+            type: msg.type as any,
+            content: msg.content,
+            payload: msg.payload as Record<string, unknown> | undefined,
+            payloadVersion: msg.payloadVersion,
+            parentId: msg.parentId,
+            createdAt: msg.createdAt.toISOString(),
+          });
+
+          return { success: true, imageUrl: publicUrl, prompt };
+        } catch (err) {
+          log.error({ err }, "Image generation failed");
+          const errMsg = err instanceof Error ? err.message : "Image generation failed";
+          return { success: false as const, error: errMsg };
+        }
+      });
+    },
+  });
+
+  return { createPoll, startGame, searchMessages, pinMessage, getCurrentTime, generateImage };
 }

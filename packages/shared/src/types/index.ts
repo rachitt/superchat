@@ -10,6 +10,9 @@ export type {
   ServerToClientEvents,
 } from "./socket-events";
 
+export type { SlashCommandDefinition } from "./slash-commands";
+export { SLASH_COMMANDS } from "./slash-commands";
+
 export type {
   GameData,
   GamePlayerData,

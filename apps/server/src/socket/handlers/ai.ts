@@ -212,6 +212,9 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
             case "pinMessage":
               parts.push((result as any)?.pinned ? "Message pinned!" : "Message unpinned.");
               break;
+            case "generateImage":
+              parts.push((result as any)?.success ? "Here's your generated image!" : `Image generation failed: ${(result as any)?.error}`);
+              break;
             default:
               parts.push(`Done.`);
           }
