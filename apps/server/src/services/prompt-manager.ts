@@ -77,25 +77,30 @@ export async function getChannelPrompt(channelId: string): Promise<string | null
     // Redis unavailable, fall through
   }
 
-  const [row] = await db
-    .select({ persona: channelPrompts.persona, customPrompt: channelPrompts.customPrompt })
-    .from(channelPrompts)
-    .where(eq(channelPrompts.channelId, channelId))
-    .limit(1);
+  try {
+    const [row] = await db
+      .select({ persona: channelPrompts.persona, customPrompt: channelPrompts.customPrompt })
+      .from(channelPrompts)
+      .where(eq(channelPrompts.channelId, channelId))
+      .limit(1);
 
-  if (!row) {
-    try { await redis.set(cacheKey, "__none__", "EX", CACHE_TTL); } catch {}
+    if (!row) {
+      try { await redis.set(cacheKey, "__none__", "EX", CACHE_TTL); } catch {}
+      return null;
+    }
+
+    // Custom prompt takes priority, then persona lookup
+    const prompt = row.customPrompt ?? (row.persona ? PERSONAS[row.persona] : null) ?? null;
+
+    try {
+      await redis.set(cacheKey, prompt ?? "__none__", "EX", CACHE_TTL);
+    } catch {}
+
+    return prompt;
+  } catch {
+    // Table may not exist yet — gracefully return null
     return null;
   }
-
-  // Custom prompt takes priority, then persona lookup
-  const prompt = row.customPrompt ?? (row.persona ? PERSONAS[row.persona] : null) ?? null;
-
-  try {
-    await redis.set(cacheKey, prompt ?? "__none__", "EX", CACHE_TTL);
-  } catch {}
-
-  return prompt;
 }
 
 export function invalidatePromptCache(workspaceId: string) {
