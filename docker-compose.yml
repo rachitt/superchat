@@ -3,15 +3,15 @@ services:
   postgres:
     image: pgvector/pgvector:pg16
     environment:
-      POSTGRES_USER: superchat
-      POSTGRES_PASSWORD: superchat
-      POSTGRES_DB: superchat
+      POSTGRES_USER: ${POSTGRES_USER:-superchat}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-superchat}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U superchat"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-superchat}"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -37,7 +37,7 @@ services:
     ports:
       - "4000:4000"
     environment:
-      DATABASE_URL: postgresql://superchat:superchat@postgres:5432/superchat
+      DATABASE_URL: postgresql://${POSTGRES_USER:-superchat}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-superchat}
       REDIS_URL: redis://redis:6379
       PORT: "4000"
       NODE_ENV: production
@@ -57,7 +57,7 @@ services:
       dockerfile: apps/server/Dockerfile
     command: ["node", "apps/server/dist/workers/worker.js"]
     environment:
-      DATABASE_URL: postgresql://superchat:superchat@postgres:5432/superchat
+      DATABASE_URL: postgresql://${POSTGRES_USER:-superchat}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-superchat}
       REDIS_URL: redis://redis:6379
       NODE_ENV: production
     env_file:
