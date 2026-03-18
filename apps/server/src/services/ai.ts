@@ -4,8 +4,8 @@ import { eq, desc, and, isNull } from "drizzle-orm";
 import { getModel, getLightModel } from "../lib/ai.js";
 import { db } from "../db/index.js";
 import { messages, user as users } from "../db/schema/index.js";
-import { AI_MAX_CONTEXT_MESSAGES, AI_BOT_NAME, AI_SMART_REPLY_COUNT } from "@superchat/shared";
-import { getSystemPrompt } from "./prompt-manager.js";
+import { AI_MAX_CONTEXT_MESSAGES, AI_BOT_NAME, AI_SMART_REPLY_COUNT, AI_MAX_AGENT_STEPS } from "@superchat/shared";
+import { getSystemPrompt, getChannelPrompt } from "./prompt-manager.js";
 import { findSimilar } from "./embeddings.js";
 import { getMemories } from "./ai-memory.js";
 import { sanitizeForAi } from "../lib/sanitize.js";
@@ -59,13 +59,15 @@ export interface StreamAiChatOptions {
   tools?: Record<string, any>;
   /** Max output tokens (default 1500) */
   maxOutputTokens?: number;
+  /** Callback fired after each agent step */
+  onStepFinish?: (event: { stepNumber: number; toolName?: string }) => void;
 }
 
 /**
  * Stream an AI response for a chat message. Returns an async iterable of text chunks.
  */
 export async function streamAiChat(opts: StreamAiChatOptions): Promise<any> {
-  const { channelId, userMessage, userName, userId, workspaceId, systemPrompt, extraContext, tools, maxOutputTokens = 1500 } = opts;
+  const { channelId, userMessage, userName, userId, workspaceId, systemPrompt, extraContext, tools, maxOutputTokens = 1500, onStepFinish } = opts;
 
   // Sanitize user input to prevent prompt injection
   const sanitizedMessage = sanitizeForAi(userMessage);
@@ -91,9 +93,15 @@ export async function streamAiChat(opts: StreamAiChatOptions): Promise<any> {
   // Resolve system prompt: explicit override > workspace prompt > default
   let finalSystemPrompt = systemPrompt ?? (workspaceId ? await getSystemPrompt(workspaceId) : await getSystemPrompt("__default__"));
 
+  // Resolve channel-specific persona/prompt
+  const channelPrompt = await getChannelPrompt(channelId);
+  if (channelPrompt) {
+    finalSystemPrompt += `\n\nChannel personality: ${channelPrompt}`;
+  }
+
   // Instruct the model to use tools rather than describe actions
   if (tools) {
-    finalSystemPrompt += `\n\nIMPORTANT: When the user asks you to create a poll, start a game, search messages, pin a message, get the time, or generate/draw an image — you MUST call the appropriate tool. Do NOT describe what you would do or say "I've created a poll" without actually calling the tool. Always use tool calls for actions. After calling a tool, ALWAYS respond with a brief, friendly message telling the user what you did (e.g. "Here's your poll!" or "It's currently 3:45 PM."). For image generation, use the generateImage tool when the user asks to draw, create, generate, or make an image/picture/illustration. If the user refines a previous image request in a thread, modify the original prompt accordingly.`;
+    finalSystemPrompt += `\n\nIMPORTANT: When the user asks you to create a poll, start a game, search messages, pin a message, get the time, generate/draw an image, or set a reminder — you MUST call the appropriate tool. Do NOT describe what you would do or say "I've created a poll" without actually calling the tool. Always use tool calls for actions. After calling a tool, ALWAYS respond with a brief, friendly message telling the user what you did (e.g. "Here's your poll!" or "It's currently 3:45 PM."). For image generation, use the generateImage tool when the user asks to draw, create, generate, or make an image/picture/illustration. If the user refines a previous image request in a thread, modify the original prompt accordingly.`;
   }
 
   // Load user memories into system prompt
@@ -104,6 +112,8 @@ export async function streamAiChat(opts: StreamAiChatOptions): Promise<any> {
       finalSystemPrompt += `\n\nWhat you remember about this user:\n${memoryBlock}`;
     }
   }
+
+  let stepCount = 0;
 
   const result = streamText({
     model: getModel(),
@@ -116,7 +126,16 @@ export async function streamAiChat(opts: StreamAiChatOptions): Promise<any> {
       { role: "user" as const, content: sanitizedMessage },
     ],
     maxOutputTokens,
-    ...(tools ? { tools, toolChoice: "auto" as const, maxSteps: 2 } : {}),
+    ...(tools ? {
+      tools,
+      toolChoice: "auto" as const,
+      maxSteps: AI_MAX_AGENT_STEPS,
+      onStepFinish: (event: any) => {
+        stepCount++;
+        const toolName = event.toolCalls?.[0]?.toolName;
+        onStepFinish?.({ stepNumber: stepCount, toolName });
+      },
+    } : {}),
   });
 
   return result;

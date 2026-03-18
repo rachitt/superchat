@@ -112,6 +112,7 @@ export interface ServerToClientEvents {
   "ai:stream:done": (data: AiStreamDone) => void;
   "ai:stream:error": (data: { channelId: string; messageId?: string; error: string }) => void;
   "ai:tool_call": (data: { channelId: string; messageId: string; toolName: string; args: Record<string, unknown>; result: unknown }) => void;
+  "ai:step": (data: { channelId: string; messageId: string; step: number; toolName?: string; description?: string }) => void;
   "game:created": (data: GameCreatedEvent) => void;
   "game:player_joined": (data: { gameId: string; player: GamePlayerData }) => void;
   "game:player_left": (data: { gameId: string; userId: string }) => void;

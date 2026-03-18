@@ -33,3 +33,15 @@ export const AI_BOT_NAME = "SuperBot";
 export const AI_MAX_CONTEXT_MESSAGES = 50;
 export const AI_SMART_REPLY_COUNT = 3;
 export const AI_RATE_LIMIT_PER_MINUTE = 10;
+export const AI_MAX_AGENT_STEPS = 5;
+
+// AI Channel Personas
+export const AI_PERSONAS = [
+  { id: "professional", label: "Professional", description: "Formal, concise, and business-focused" },
+  { id: "casual", label: "Casual", description: "Friendly, relaxed, and conversational" },
+  { id: "sarcastic", label: "Sarcastic", description: "Witty, dry humor with a helpful twist" },
+  { id: "mentor", label: "Mentor", description: "Patient, educational, explains concepts thoroughly" },
+  { id: "creative", label: "Creative", description: "Imaginative, uses metaphors and analogies" },
+] as const;
+
+export type AiPersonaId = (typeof AI_PERSONAS)[number]["id"];

@@ -5,8 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import { useTRPC } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
 import { useChatStore } from "@/stores/chat-store";
-import { Search, Loader2, Hash, User } from "lucide-react";
+import { Search, Loader2, Hash, User, Sparkles, Type, Layers } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
+
+type SearchMode = "hybrid" | "keyword" | "semantic";
 
 interface SearchDialogProps {
   workspaceId: string;
@@ -14,10 +17,17 @@ interface SearchDialogProps {
   onClose: () => void;
 }
 
+const SEARCH_MODES: { id: SearchMode; label: string; icon: React.ReactNode }[] = [
+  { id: "hybrid", label: "Hybrid", icon: <Layers className="h-3 w-3" /> },
+  { id: "keyword", label: "Keyword", icon: <Type className="h-3 w-3" /> },
+  { id: "semantic", label: "Semantic", icon: <Sparkles className="h-3 w-3" /> },
+];
+
 export function SearchDialog({ workspaceId, open, onClose }: SearchDialogProps) {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [currentChannelOnly, setCurrentChannelOnly] = useState(false);
+  const [searchMode, setSearchMode] = useState<SearchMode>("hybrid");
   const inputRef = useRef<HTMLInputElement>(null);
   const params = useParams<{ workspaceSlug: string; channelId?: string }>();
   const router = useRouter();
@@ -51,6 +61,7 @@ export function SearchDialog({ workspaceId, open, onClose }: SearchDialogProps) 
       query: debouncedQuery,
       workspaceId,
       channelId: currentChannelOnly ? params.channelId : undefined,
+      mode: searchMode,
     }),
     enabled: debouncedQuery.length > 0,
   });
@@ -95,6 +106,25 @@ export function SearchDialog({ workspaceId, open, onClose }: SearchDialogProps) 
 
         {/* Filters */}
         <div className="flex items-center gap-3 border-b border-border/60 px-4 py-2">
+          {/* Search mode toggle */}
+          <div className="flex items-center rounded-lg border border-border/60 p-0.5">
+            {SEARCH_MODES.map((mode) => (
+              <button
+                key={mode.id}
+                onClick={() => setSearchMode(mode.id)}
+                className={cn(
+                  "flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
+                  searchMode === mode.id
+                    ? "bg-teal-500/10 text-teal-700 dark:text-teal-400"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {mode.icon}
+                {mode.label}
+              </button>
+            ))}
+          </div>
+
           {params.channelId && (
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
               <input
@@ -154,6 +184,11 @@ export function SearchDialog({ workspaceId, open, onClose }: SearchDialogProps) 
                   <Hash className="h-2.5 w-2.5" />
                   {result.channel.name}
                 </span>
+                {"score" in result && typeof result.score === "number" && result.score > 0 && (
+                  <span className="rounded-md bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-mono text-teal-700 dark:text-teal-400">
+                    {(result.score * 100).toFixed(0)}%
+                  </span>
+                )}
                 <span className="ml-auto font-mono">
                   {new Date(result.message.createdAt).toLocaleDateString()}
                 </span>

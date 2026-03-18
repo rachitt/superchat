@@ -7,6 +7,8 @@ import {
   Search,
   Pin,
   Clock,
+  Image,
+  Bell,
   Loader2,
   CheckCircle2,
   XCircle,
@@ -26,6 +28,8 @@ function getToolIcon(toolName: string) {
     case "searchMessages": return <Search className={iconClass} />;
     case "pinMessage": return <Pin className={iconClass} />;
     case "getCurrentTime": return <Clock className={iconClass} />;
+    case "generateImage": return <Image className={iconClass} />;
+    case "createReminder": return <Bell className={iconClass} />;
     default: return <Wrench className={iconClass} />;
   }
 }
@@ -47,6 +51,15 @@ function formatToolResult(entry: ToolCallEntry): string {
       const res = entry.result as { currentTime?: string } | undefined;
       if (res?.currentTime) return new Date(res.currentTime).toLocaleTimeString();
       return "Time retrieved";
+    }
+    case "generateImage": {
+      const res = entry.result as { success?: boolean; error?: string } | undefined;
+      return res?.success ? "Image generated" : `Failed: ${res?.error ?? "unknown"}`;
+    }
+    case "createReminder": {
+      const res = entry.result as { success?: boolean; delayMinutes?: number } | undefined;
+      if (res?.success) return `Reminder in ${res.delayMinutes}m`;
+      return "Failed to set";
     }
     default: return "Done";
   }

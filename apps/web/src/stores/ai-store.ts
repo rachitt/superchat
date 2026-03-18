@@ -7,11 +7,20 @@ interface AiStreamState {
   isStreaming: boolean;
 }
 
+interface AgentStep {
+  step: number;
+  toolName?: string;
+  description?: string;
+  timestamp: number;
+}
+
 interface AiState {
   /** Active AI streams: messageId -> stream state */
   streams: Map<string, AiStreamState>;
   /** Smart reply suggestions: messageId -> replies */
   smartReplies: Map<string, string[]>;
+  /** Agent step progress: messageId -> steps array */
+  agentSteps: Map<string, AgentStep[]>;
   /** Whether a summarization is in progress */
   isSummarizing: boolean;
   /** Latest channel summary */
@@ -24,6 +33,8 @@ interface AiState {
   clearStream: (messageId: string) => void;
   setSmartReplies: (messageId: string, replies: string[]) => void;
   clearSmartReplies: (messageId: string) => void;
+  addAgentStep: (messageId: string, step: AgentStep) => void;
+  clearAgentSteps: (messageId: string) => void;
   setSummarizing: (isSummarizing: boolean) => void;
   setSummary: (summary: string | null) => void;
 }
@@ -31,6 +42,7 @@ interface AiState {
 export const useAiStore = create<AiState>((set) => ({
   streams: new Map(),
   smartReplies: new Map(),
+  agentSteps: new Map(),
   isSummarizing: false,
   summary: null,
 
@@ -90,6 +102,21 @@ export const useAiStore = create<AiState>((set) => ({
       const smartReplies = new Map(state.smartReplies);
       smartReplies.delete(messageId);
       return { smartReplies };
+    }),
+
+  addAgentStep: (messageId, step) =>
+    set((state) => {
+      const agentSteps = new Map(state.agentSteps);
+      const existing = agentSteps.get(messageId) ?? [];
+      agentSteps.set(messageId, [...existing, step]);
+      return { agentSteps };
+    }),
+
+  clearAgentSteps: (messageId) =>
+    set((state) => {
+      const agentSteps = new Map(state.agentSteps);
+      agentSteps.delete(messageId);
+      return { agentSteps };
     }),
 
   setSummarizing: (isSummarizing) => set({ isSummarizing }),

@@ -6,6 +6,7 @@ import { getSocket } from "@/lib/socket";
 import { useChatStore } from "@/stores/chat-store";
 import { usePresenceStore } from "@/stores/presence-store";
 import { useGamificationStore } from "@/stores/gamification-store";
+import { useAiStore } from "@/stores/ai-store";
 
 export function useSocket() {
   const initialized = useRef(false);
@@ -13,6 +14,7 @@ export function useSocket() {
     useChatStore();
   const setPresence = usePresenceStore((s) => s.setPresence);
   const setLevel = useGamificationStore((s) => s.setLevel);
+  const addAgentStep = useAiStore((s) => s.addAgentStep);
 
   useEffect(() => {
     if (initialized.current) return;
@@ -57,6 +59,10 @@ export function useSocket() {
       });
     });
 
+    socket.on("ai:step", ({ messageId, step, toolName, description }) => {
+      addAgentStep(messageId, { step, toolName, description, timestamp: Date.now() });
+    });
+
     return () => {
       socket.off("message:new");
       socket.off("message:updated");
@@ -66,7 +72,8 @@ export function useSocket() {
       socket.off("presence:changed");
       socket.off("living:update");
       socket.off("user:levelup");
+      socket.off("ai:step");
       initialized.current = false;
     };
-  }, [addMessage, updateMessage, updateMessagePayload, removeMessage, setTyping, toggleReaction, setPresence, setLevel]);
+  }, [addMessage, updateMessage, updateMessagePayload, removeMessage, setTyping, toggleReaction, setPresence, setLevel, addAgentStep]);
 }
