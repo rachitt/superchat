@@ -43,6 +43,13 @@
       "when": 1773794664315,
       "tag": "0005_thin_namora",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1773794692327,
+      "tag": "0006_bent_ken_ellis",
+      "breakpoints": true
     }
   ]
 }

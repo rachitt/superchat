@@ -49,6 +49,8 @@ export async function executeSlashCommand(
       return handleTranslate(args, ctx);
     case "/weather":
       return handleWeather(args, ctx);
+    case "/whiteboard":
+      return handleWhiteboard(args, ctx);
     default:
       return false;
   }
@@ -233,6 +235,38 @@ async function handleTranslate(args: string, ctx: SlashCommandContext): Promise<
     log.error({ err }, "Translate failed");
     await sendBotMessage(ctx, "Translation failed. Please try again.");
   }
+  return true;
+}
+
+// ── /whiteboard ──
+
+async function handleWhiteboard(args: string, ctx: SlashCommandContext): Promise<boolean> {
+  const title = args.trim() || "Whiteboard";
+
+  const [msg] = await db
+    .insert(messages)
+    .values({
+      channelId: ctx.channelId,
+      authorId: ctx.userId,
+      type: "whiteboard",
+      content: title,
+      payload: { title, shapes: {}, bindings: {} },
+      createdAt: sql`now() + interval '2 seconds'`,
+    })
+    .returning();
+
+  ctx.io.to(`channel:${ctx.channelId}`).emit("message:new", {
+    id: msg.id,
+    channelId: msg.channelId,
+    authorId: msg.authorId,
+    type: msg.type as any,
+    content: msg.content,
+    payload: msg.payload as Record<string, unknown>,
+    payloadVersion: msg.payloadVersion,
+    parentId: msg.parentId,
+    createdAt: msg.createdAt.toISOString(),
+  });
+
   return true;
 }
 

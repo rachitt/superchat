@@ -7,6 +7,7 @@ import processMessageCleanup from "./processors/message-cleanup.js";
 import processLivingTick from "./processors/living-tick.js";
 import processReminder from "./processors/reminder.js";
 import processThreadSummary from "./processors/thread-summary.js";
+import processScheduledMessage from "./processors/scheduled-message.js";
 import logger from "../lib/logger.js";
 import { withSpan } from "../lib/tracing.js";
 import {
@@ -60,6 +61,9 @@ const workers = [
     connection: { ...connectionOpts },
   }),
   new Worker("thread-summary", wrapProcessor("thread-summary", processThreadSummary), {
+    connection: { ...connectionOpts },
+  }),
+  new Worker("scheduled-messages", wrapProcessor("scheduled-messages", processScheduledMessage), {
     connection: { ...connectionOpts },
   }),
 ];

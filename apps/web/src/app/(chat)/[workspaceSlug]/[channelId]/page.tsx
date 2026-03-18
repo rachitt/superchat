@@ -16,6 +16,7 @@ import { ThreadPanel } from "@/components/chat/thread-panel";
 import { SummaryDialog } from "@/components/ai/summary-dialog";
 import { GamePanel } from "@/components/games/game-panel";
 import { PinnedPanel } from "@/components/chat/pinned-panel";
+import { ScheduledMessagesPanel } from "@/components/chat/scheduled-messages-panel";
 import { SearchDialog, useSearchShortcut } from "@/components/chat/search-dialog";
 import {
   Hash,
@@ -23,6 +24,7 @@ import {
   Sparkles,
   Gamepad2,
   Pin,
+  CalendarClock,
 } from "lucide-react";
 import {
   Tooltip,
@@ -42,6 +44,7 @@ export default function ChannelPage() {
   const [showSummary, setShowSummary] = useState(false);
   const [showGames, setShowGames] = useState(false);
   const [showPinned, setShowPinned] = useState(false);
+  const [showScheduled, setShowScheduled] = useState(false);
   const pendingOpenGameId = useGameStore((s) => s.pendingOpenGameId);
   const setPendingOpenGameId = useGameStore((s) => s.setPendingOpenGameId);
 
@@ -193,6 +196,23 @@ export default function ChannelPage() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
+                  onClick={() => setShowScheduled(!showScheduled)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs transition-colors",
+                    showScheduled
+                      ? "bg-teal-500/15 text-teal-600 dark:text-teal-400"
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  )}
+                >
+                  <CalendarClock className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Scheduled messages</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
                   onClick={() => setShowSearch(true)}
                   className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                 >
@@ -246,6 +266,10 @@ export default function ChannelPage() {
 
       {showPinned && (
         <PinnedPanel channelId={channelId} onClose={() => setShowPinned(false)} />
+      )}
+
+      {showScheduled && (
+        <ScheduledMessagesPanel channelId={channelId} onClose={() => setShowScheduled(false)} />
       )}
 
       {showSummary && (

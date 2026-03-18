@@ -12,6 +12,7 @@ const QUEUE_NAMES = [
   "living-tick",
   "reminders",
   "thread-summary",
+  "scheduled-messages",
 ] as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[number];

@@ -14,6 +14,7 @@ import { leaderboardRouter } from "./leaderboard.js";
 import { bookmarkRouter } from "./bookmark.js";
 import { analyticsRouter } from "./analytics.js";
 import { webhookRouter } from "./webhook.js";
+import { scheduledRouter } from "./scheduled.js";
 
 export const appRouter = router({
   user: userRouter,
@@ -31,6 +32,7 @@ export const appRouter = router({
   bookmark: bookmarkRouter,
   analytics: analyticsRouter,
   webhook: webhookRouter,
+  scheduled: scheduledRouter,
 });
 
 export type AppRouter = typeof appRouter;

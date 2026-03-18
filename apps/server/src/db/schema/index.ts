@@ -8,3 +8,4 @@ export * from "./prompts";
 export * from "./embeddings";
 export * from "./ai-memory";
 export * from "./webhooks";
+export * from "./scheduled-messages";
