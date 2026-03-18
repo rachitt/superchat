@@ -19,6 +19,8 @@ import { CountdownWidget } from "../living/countdown-widget";
 import { SelfDestructWidget } from "../living/self-destruct-widget";
 import { DynamicCardWidget } from "../living/dynamic-card-widget";
 import { LiveScoreWidget } from "../living/live-score-widget";
+import { WhiteboardWidget } from "../living/whiteboard-widget";
+import { CodeBlock } from "./code-block";
 import { LevelBadge } from "../gamification/level-badge";
 import { EmojiPickerPopover, getFrequentEmojis, trackEmojiUsage } from "../gamification/emoji-picker-popover";
 import { VoiceMessage } from "./voice-message";
@@ -91,11 +93,16 @@ function useCountdown(expiresAt: string | null | undefined): { remaining: string
 }
 
 const markdownComponents = {
-  pre: ({ children, ...props }: React.ComponentProps<"pre">) => (
-    <pre className="my-2 overflow-x-auto rounded-lg bg-background/60 p-3 text-[13px] font-mono border border-border" {...props}>
-      {children}
-    </pre>
-  ),
+  pre: ({ children }: React.ComponentProps<"pre">) => {
+    // Extract code element's props
+    const codeChild = children as React.ReactElement<{ className?: string; children?: React.ReactNode }>;
+    if (codeChild?.props) {
+      const lang = codeChild.props.className?.replace("language-", "") || undefined;
+      const code = String(codeChild.props.children ?? "").replace(/\n$/, "");
+      return <CodeBlock code={code} language={lang} />;
+    }
+    return <pre className="my-2 overflow-x-auto rounded-lg bg-background/60 p-3 text-[13px] font-mono border border-border">{children}</pre>;
+  },
   code: ({ children, className, ...props }: React.ComponentProps<"code">) => {
     const isInline = !className;
     return isInline ? (
@@ -184,9 +191,10 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
 
   const isOwn = session?.user?.id === message.authorId;
   const isPoll = message.type === "poll";
-  const isLivingMessage = ["poll", "countdown", "live_score", "dynamic_card", "self_destruct"].includes(message.type);
+  const isBotLivingMessage = ["poll", "countdown", "live_score", "dynamic_card", "self_destruct"].includes(message.type);
+  const isLivingMessage = isBotLivingMessage || message.type === "whiteboard";
   const isBot = message.type === "system";
-  const displayName = isBot ? "SuperBot" : isLivingMessage ? "SuperBot" : (message.author?.name ?? message.authorId.slice(0, 8));
+  const displayName = isBot ? "SuperBot" : isBotLivingMessage ? "SuperBot" : (message.author?.name ?? message.authorId.slice(0, 8));
   const initials = isBot ? "AI" : displayName.slice(0, 2).toUpperCase();
   const authorLevel = message.author?.level ?? 1;
 
@@ -298,7 +306,7 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
           >
             {displayName}
           </button>
-          {!isBot && !isLivingMessage && (
+          {!isBot && !isBotLivingMessage && (
             <LevelBadge level={authorLevel} size="sm" />
           )}
           {message.author?.username && (
@@ -360,6 +368,11 @@ export function MessageItem({ message, showThread = true, highlighted = false }:
           />
         ) : message.type === "live_score" && message.payload ? (
           <LiveScoreWidget
+            messageId={message.id}
+            payload={message.payload as any}
+          />
+        ) : message.type === "whiteboard" && message.payload ? (
+          <WhiteboardWidget
             messageId={message.id}
             payload={message.payload as any}
           />

@@ -83,6 +83,31 @@ export function registerLivingHandlers(io: IOServer, socket: IOSocket) {
         }
       }
 
+      // ── Whiteboard interactions ──
+      if (msg.type === "whiteboard" && action === "draw") {
+        const shapes = (data?.shapes ?? {}) as Record<string, unknown>;
+        const updatedPayload = { ...payload, shapes };
+
+        // Broadcast immediately for real-time collaboration (excludes sender)
+        socket.to(`channel:${msg.channelId}`).emit("living:update", {
+          messageId,
+          payload: updatedPayload,
+          version: msg.payloadVersion + 1,
+        });
+
+        // Persist to DB only when explicitly requested (debounced on client)
+        if (data?.persist) {
+          await db
+            .update(messages)
+            .set({
+              payload: updatedPayload,
+              payloadVersion: sql`${messages.payloadVersion} + 1`,
+            })
+            .where(eq(messages.id, messageId));
+        }
+        return;
+      }
+
       // ── Dynamic card interactions ──
       if (msg.type === "dynamic_card" && action === "update_field" && data?.fields) {
         const cardPayload = payload as {

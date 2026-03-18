@@ -7,6 +7,7 @@ export const MESSAGE_TYPES = [
   "trivia",
   "dynamic_card",
   "self_destruct",
+  "whiteboard",
 ] as const;
 
 export type MessageType = (typeof MESSAGE_TYPES)[number];

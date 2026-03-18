@@ -8,9 +8,11 @@ import { MAX_MESSAGE_LENGTH, AI_BOT_NAME, SLASH_COMMANDS } from "@superchat/shar
 import { FileUpload } from "./file-upload";
 import { MentionPopover, type MentionUser } from "./mention-popover";
 import { SlashCommandPopover } from "./slash-command-popover";
+import { SchedulePicker } from "./schedule-picker";
 import { SmartReplyBar } from "../ai/smart-reply-bar";
 import { useSmartReplies } from "@/hooks/use-smart-replies";
 import { useChatStore } from "@/stores/chat-store";
+import { detectLanguage } from "@/lib/detect-language";
 import {
   SendHorizontal,
   Clock,
@@ -20,6 +22,7 @@ import {
   AtSign,
   Mic,
   Square,
+  CalendarClock,
 } from "lucide-react";
 import {
   Tooltip,
@@ -52,6 +55,7 @@ export function MessageInput({ channelId }: MessageInputProps) {
   const [slashOpen, setSlashOpen] = useState(false);
   const [slashFilter, setSlashFilter] = useState("");
   const [slashIndex, setSlashIndex] = useState(0);
+  const [scheduledTime, setScheduledTime] = useState<Date | null>(null);
   const [isUserTyping, setIsUserTyping] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -71,6 +75,10 @@ export function MessageInput({ channelId }: MessageInputProps) {
 
   const getPresignedUrl = useMutation(
     trpc.upload.getPresignedUrl.mutationOptions()
+  );
+
+  const scheduleMutation = useMutation(
+    trpc.scheduled.schedule.mutationOptions()
   );
 
   const { notifyTyping: notifySmartReplyTyping } = useSmartReplies(channelId);
@@ -97,6 +105,20 @@ export function MessageInput({ channelId }: MessageInputProps) {
   const handleSend = useCallback(() => {
     const trimmed = content.trim();
     if (!trimmed) return;
+
+    // If scheduled, use tRPC mutation instead of socket
+    if (scheduledTime) {
+      scheduleMutation.mutate({
+        channelId,
+        content: trimmed,
+        scheduledFor: scheduledTime.toISOString(),
+      });
+      setContent("");
+      setScheduledTime(null);
+      setMentionOpen(false);
+      return;
+    }
+
     const socket = getSocket();
     const expiresAt = expirySeconds
       ? new Date(Date.now() + expirySeconds * 1000).toISOString()
@@ -116,7 +138,7 @@ export function MessageInput({ channelId }: MessageInputProps) {
     setContent("");
     setExpirySeconds(null);
     setMentionOpen(false);
-  }, [content, channelId, expirySeconds]);
+  }, [content, channelId, expirySeconds, scheduledTime, scheduleMutation]);
 
   const handleFileUpload = useCallback(
     (url: string, fileName: string) => {
@@ -287,6 +309,35 @@ export function MessageInput({ channelId }: MessageInputProps) {
     [handleTyping]
   );
 
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      const text = e.clipboardData.getData("text/plain");
+      if (!text) return;
+
+      // Detect code: multi-line with consistent indentation or detected language
+      const lines = text.split("\n");
+      if (lines.length >= 3) {
+        const indentedLines = lines.filter((l) => /^\s{2,}/.test(l) || /^\t/.test(l));
+        const hasCodePatterns = indentedLines.length >= lines.length * 0.3;
+        const detectedLang = detectLanguage(text);
+
+        if (hasCodePatterns || detectedLang) {
+          e.preventDefault();
+          const lang = detectedLang || "";
+          const wrapped = `\`\`\`${lang}\n${text}\n\`\`\``;
+          const textarea = textareaRef.current;
+          if (textarea) {
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const newContent = content.slice(0, start) + wrapped + content.slice(end);
+            setContent(newContent);
+          }
+        }
+      }
+    },
+    [content]
+  );
+
   const handleMentionSelect = useCallback(
     (user: MentionUser) => {
       const textarea = textareaRef.current;
@@ -393,6 +444,7 @@ export function MessageInput({ channelId }: MessageInputProps) {
             value={content}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder={`Message #channel — use @${AI_BOT_NAME} to ask AI`}
             maxLength={MAX_MESSAGE_LENGTH}
             rows={1}
@@ -442,6 +494,12 @@ export function MessageInput({ channelId }: MessageInputProps) {
             </Tooltip>
 
             <div className="mx-1 h-4 w-px bg-border" />
+
+            {/* Schedule message */}
+            <SchedulePicker
+              scheduledTime={scheduledTime}
+              onSchedule={setScheduledTime}
+            />
 
             {/* Self-destruct timer */}
             <div className="relative">
@@ -549,12 +607,23 @@ export function MessageInput({ channelId }: MessageInputProps) {
               className={cn(
                 "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all",
                 content.trim()
-                  ? "bg-primary text-primary-foreground shadow-sm hover:opacity-90"
+                  ? scheduledTime
+                    ? "bg-teal-600 text-white shadow-sm hover:opacity-90"
+                    : "bg-primary text-primary-foreground shadow-sm hover:opacity-90"
                   : "bg-muted text-muted-foreground cursor-not-allowed"
               )}
             >
-              <SendHorizontal className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Send</span>
+              {scheduledTime ? (
+                <>
+                  <CalendarClock className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Schedule</span>
+                </>
+              ) : (
+                <>
+                  <SendHorizontal className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Send</span>
+                </>
+              )}
             </button>
           </div>
         </div>

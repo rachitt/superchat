@@ -12,6 +12,7 @@ import { memberRouter } from "./member.js";
 import { dmRouter } from "./dm.js";
 import { leaderboardRouter } from "./leaderboard.js";
 import { bookmarkRouter } from "./bookmark.js";
+import { scheduledRouter } from "./scheduled.js";
 
 export const appRouter = router({
   user: userRouter,
@@ -27,6 +28,7 @@ export const appRouter = router({
   dm: dmRouter,
   leaderboard: leaderboardRouter,
   bookmark: bookmarkRouter,
+  scheduled: scheduledRouter,
 });
 
 export type AppRouter = typeof appRouter;

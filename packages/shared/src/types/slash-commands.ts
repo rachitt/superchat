@@ -37,4 +37,10 @@ export const SLASH_COMMANDS: SlashCommandDefinition[] = [
     usage: "/weather <city>",
     example: "/weather Tokyo",
   },
+  {
+    name: "whiteboard",
+    description: "Create a collaborative whiteboard",
+    usage: "/whiteboard [title]",
+    example: "/whiteboard Architecture Diagram",
+  },
 ];
