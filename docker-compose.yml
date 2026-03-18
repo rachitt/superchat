@@ -1,0 +1,74 @@
+services:
+  # ── PostgreSQL with pgvector ──
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: superchat
+      POSTGRES_PASSWORD: superchat
+      POSTGRES_DB: superchat
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U superchat"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Redis ──
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Fastify API + Socket.IO server ──
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: postgresql://superchat:superchat@postgres:5432/superchat
+      REDIS_URL: redis://redis:6379
+      PORT: "4000"
+      NODE_ENV: production
+    env_file:
+      - apps/server/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── BullMQ Worker (same image, different entrypoint) ──
+  worker:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    command: ["node", "apps/server/dist/workers/worker.js"]
+    environment:
+      DATABASE_URL: postgresql://superchat:superchat@postgres:5432/superchat
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+    env_file:
+      - apps/server/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:

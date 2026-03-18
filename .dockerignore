@@ -1,0 +1,10 @@
+node_modules
+.next
+dist
+*.png
+*.log
+.git
+.claude
+.playwright-mcp
+references
+tasks
