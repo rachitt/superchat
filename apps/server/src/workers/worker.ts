@@ -1,3 +1,4 @@
+import "../lib/telemetry.js";
 import "dotenv/config";
 import { Worker, type Job } from "bullmq";
 import { getQueue, closeAllQueues } from "./queue.js";
@@ -7,6 +8,7 @@ import processLivingTick from "./processors/living-tick.js";
 import processReminder from "./processors/reminder.js";
 import processThreadSummary from "./processors/thread-summary.js";
 import logger from "../lib/logger.js";
+import { withSpan } from "../lib/tracing.js";
 import {
   bullmqJobsProcessedTotal,
   bullmqJobsDuration,
@@ -25,7 +27,11 @@ function wrapProcessor(queueName: string, processor: (job: Job) => Promise<void>
 
     const start = Date.now();
     try {
-      await processor(job);
+      await withSpan(`worker.${queueName}`, async (span) => {
+        span.setAttribute("job.id", job.id ?? "unknown");
+        if (traceId) span.setAttribute("job.parentTraceId", traceId);
+        await processor(job);
+      });
       const durationSec = (Date.now() - start) / 1000;
       bullmqJobsProcessedTotal.inc({ queue: queueName, status: "completed" });
       bullmqJobsDuration.observe({ queue: queueName }, durationSec);

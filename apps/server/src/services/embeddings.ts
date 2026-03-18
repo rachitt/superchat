@@ -4,21 +4,24 @@ import { google } from "../lib/ai.js";
 import { db } from "../db/index.js";
 import { messageEmbeddings } from "../db/schema/embeddings.js";
 import { messages, user as users } from "../db/schema/index.js";
+import { withSpan } from "../lib/tracing.js";
 
 /**
  * Generate an embedding vector for the given text using Gemini's text-embedding-004.
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
-  if (!google) {
-    throw new Error("GEMINI_API_KEY is required for embeddings");
-  }
+  return withSpan("embeddings.generate", async () => {
+    if (!google) {
+      throw new Error("GEMINI_API_KEY is required for embeddings");
+    }
 
-  const { embedding } = await embed({
-    model: google.textEmbeddingModel("text-embedding-004"),
-    value: text,
-  });
+    const { embedding } = await embed({
+      model: google.textEmbeddingModel("text-embedding-004"),
+      value: text,
+    });
 
-  return embedding;
+    return embedding;
+  }, { "embedding.textLength": text.length });
 }
 
 /**
@@ -49,6 +52,16 @@ export async function findSimilar(
   channelId: string,
   query: string,
   limit: number = 10
+): Promise<{ messageId: string; content: string; authorName: string; similarity: number }[]> {
+  return withSpan("embeddings.findSimilar", async () => {
+    return _findSimilarInner(channelId, query, limit);
+  }, { "embedding.channelId": channelId, "embedding.limit": limit });
+}
+
+async function _findSimilarInner(
+  channelId: string,
+  query: string,
+  limit: number,
 ): Promise<{ messageId: string; content: string; authorName: string; similarity: number }[]> {
   const queryEmbedding = await generateEmbedding(query);
   const vectorStr = `[${queryEmbedding.join(",")}]`;

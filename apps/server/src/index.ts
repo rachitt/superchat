@@ -1,3 +1,4 @@
+import "./lib/telemetry.js";
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import Fastify from "fastify";
@@ -26,6 +27,7 @@ import {
 } from "./lib/metrics.js";
 import { apiGeneralLimiter } from "./lib/rate-limit.js";
 import { setNotificationIO } from "./services/notifications.js";
+import { registerWebhookRoute } from "./lib/webhook-handler.js";
 
 const PORT = parseInt(process.env.PORT || "4000", 10);
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
@@ -123,6 +125,9 @@ async function main() {
         .send({ error: "Too many requests", retryAfter: result.retryAfter });
     }
   });
+
+  // ── Webhook route (before tRPC — external, no auth) ──
+  registerWebhookRoute(fastify);
 
   // ── tRPC ──
   await fastify.register(fastifyTRPCPlugin, {

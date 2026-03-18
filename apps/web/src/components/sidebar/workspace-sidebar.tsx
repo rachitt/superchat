@@ -17,6 +17,7 @@ import {
   Bookmark,
   Sun,
   Moon,
+  BarChart3,
 } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useUiStore } from "@/stores/ui-store";
@@ -131,6 +132,17 @@ export function WorkspaceSidebar({ workspaceId, workspaceName, channels }: Works
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">Saved messages</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => router.push(`/${params.workspaceSlug}/analytics`)}
+                      className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    >
+                      <BarChart3 className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Analytics</TooltipContent>
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>

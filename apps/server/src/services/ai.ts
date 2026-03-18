@@ -9,6 +9,7 @@ import { getSystemPrompt } from "./prompt-manager.js";
 import { findSimilar } from "./embeddings.js";
 import { getMemories } from "./ai-memory.js";
 import { sanitizeForAi } from "../lib/sanitize.js";
+import { withSpan } from "../lib/tracing.js";
 
 interface ChannelMessage {
   role: "user" | "assistant";
@@ -65,6 +66,16 @@ export interface StreamAiChatOptions {
  * Stream an AI response for a chat message. Returns an async iterable of text chunks.
  */
 export async function streamAiChat(opts: StreamAiChatOptions): Promise<any> {
+  return withSpan("ai.streamChat", async (span) => {
+    return _streamAiChatInner(opts, span);
+  }, {
+    "ai.channelId": opts.channelId,
+    "ai.model": "auto",
+    "ai.maxSteps": opts.tools ? 2 : 0,
+  });
+}
+
+async function _streamAiChatInner(opts: StreamAiChatOptions, _span: any): Promise<any> {
   const { channelId, userMessage, userName, userId, workspaceId, systemPrompt, extraContext, tools, maxOutputTokens = 1500 } = opts;
 
   // Sanitize user input to prevent prompt injection

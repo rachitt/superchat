@@ -12,6 +12,8 @@ import { memberRouter } from "./member.js";
 import { dmRouter } from "./dm.js";
 import { leaderboardRouter } from "./leaderboard.js";
 import { bookmarkRouter } from "./bookmark.js";
+import { analyticsRouter } from "./analytics.js";
+import { webhookRouter } from "./webhook.js";
 
 export const appRouter = router({
   user: userRouter,
@@ -27,6 +29,8 @@ export const appRouter = router({
   dm: dmRouter,
   leaderboard: leaderboardRouter,
   bookmark: bookmarkRouter,
+  analytics: analyticsRouter,
+  webhook: webhookRouter,
 });
 
 export type AppRouter = typeof appRouter;
