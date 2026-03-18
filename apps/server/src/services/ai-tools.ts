@@ -11,6 +11,7 @@ import { games } from "../db/schema/games.js";
 import { channels } from "../db/schema/channels.js";
 import { getUploadUrl, getPublicUrl } from "../lib/storage.js";
 import { createChildLogger } from "../lib/logger.js";
+import { getQueue } from "../workers/queue.js";
 import OpenAI from "openai";
 
 const log = createChildLogger({ module: "ai-tools" });
@@ -27,7 +28,7 @@ interface ToolContext {
  * Build Vercel AI SDK tool definitions that SuperBot can invoke.
  */
 export function buildAiTools(ctx: ToolContext) {
-  // Guard against duplicate tool execution across multi-step calls
+  // Guard against duplicate tool execution across multi-step calls (for side-effect tools only)
   const executed = new Set<string>();
   function once<T>(name: string, fn: () => Promise<T>): Promise<T | { skipped: true }> {
     if (executed.has(name)) return Promise.resolve({ skipped: true });
@@ -139,8 +140,9 @@ export function buildAiTools(ctx: ToolContext) {
     },
   });
 
+  // searchMessages does NOT use once() — multi-step agent needs to search with different queries
   const searchMessages = tool({
-    description: "Search messages in the current channel by keyword",
+    description: "Search messages in the current channel by keyword. Can be called multiple times with different queries.",
     inputSchema: z.object({
       query: z.string().describe("Search query"),
       limit: z.number().min(1).max(20).default(10).describe("Max results"),
@@ -287,5 +289,35 @@ export function buildAiTools(ctx: ToolContext) {
     },
   });
 
-  return { createPoll, startGame, searchMessages, pinMessage, getCurrentTime, generateImage };
+  const createReminder = tool({
+    description: "Set a reminder that will notify the user after a specified delay",
+    inputSchema: z.object({
+      text: z.string().describe("The reminder text"),
+      delayMinutes: z.number().min(1).max(10080).describe("Delay in minutes before the reminder fires (max 7 days)"),
+    }),
+    execute: async ({ text, delayMinutes }: { text: string; delayMinutes: number }) => {
+      return once("createReminder", async () => {
+        try {
+          await getQueue("reminders").add(
+            "reminder",
+            { userId: ctx.userId, channelId: ctx.channelId, text },
+            { delay: delayMinutes * 60 * 1000 }
+          );
+
+          const fireAt = new Date(Date.now() + delayMinutes * 60 * 1000);
+          return {
+            success: true,
+            text,
+            delayMinutes,
+            fireAt: fireAt.toISOString(),
+          };
+        } catch (err) {
+          log.error({ err }, "Failed to create reminder");
+          return { success: false as const, error: "Failed to schedule reminder" };
+        }
+      });
+    },
+  });
+
+  return { createPoll, startGame, searchMessages, pinMessage, getCurrentTime, generateImage, createReminder };
 }

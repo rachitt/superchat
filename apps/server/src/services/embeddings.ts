@@ -88,3 +88,41 @@ async function _findSimilarInner(
     similarity: r.similarity,
   }));
 }
+
+/**
+ * Find similar messages across all channels in a workspace using cosine similarity.
+ */
+export async function findSimilarWorkspace(
+  workspaceId: string,
+  query: string,
+  limit: number = 10
+): Promise<{ messageId: string; channelId: string; content: string; authorName: string; similarity: number }[]> {
+  const { channels } = await import("../db/schema/channels.js");
+  const queryEmbedding = await generateEmbedding(query);
+  const vectorStr = `[${queryEmbedding.join(",")}]`;
+
+  const results = await db
+    .select({
+      messageId: messageEmbeddings.messageId,
+      channelId: messageEmbeddings.channelId,
+      content: messages.content,
+      authorName: users.name,
+      username: users.username,
+      similarity: sql<number>`1 - (${messageEmbeddings.embedding} <=> ${vectorStr}::vector)`,
+    })
+    .from(messageEmbeddings)
+    .innerJoin(messages, eq(messages.id, messageEmbeddings.messageId))
+    .innerJoin(users, eq(users.id, messages.authorId))
+    .innerJoin(channels, eq(channels.id, messageEmbeddings.channelId))
+    .where(and(eq(channels.workspaceId, workspaceId), sql`${messages.deletedAt} IS NULL`))
+    .orderBy(sql`${messageEmbeddings.embedding} <=> ${vectorStr}::vector`)
+    .limit(limit);
+
+  return results.map((r) => ({
+    messageId: r.messageId,
+    channelId: r.channelId,
+    content: r.content,
+    authorName: r.authorName ?? r.username ?? "User",
+    similarity: r.similarity,
+  }));
+}

@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import { useAiStore } from "@/stores/ai-store";
 import { AI_BOT_NAME } from "@superchat/shared";
 import { ToolCallDisplay } from "./tool-call-display";
+import { AgentStepIndicator } from "./agent-step-indicator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Bot } from "lucide-react";
@@ -102,6 +103,7 @@ export function AiMessage({ messageId, persistedContent }: AiMessageProps) {
             <span className="ml-0.5 inline-block h-4 w-[3px] rounded-sm bg-teal-400 animate-cursor-blink" />
           )}
         </div>
+        <AgentStepIndicator messageId={messageId} />
         <ToolCallDisplay messageId={messageId} />
       </div>
     </div>

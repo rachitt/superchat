@@ -7,6 +7,7 @@ import {
   channels,
   workspaceMembers,
 } from "../../db/schema/index.js";
+import { hybridSearch, type SearchMode } from "../../services/hybrid-search.js";
 
 export const searchRouter = router({
   search: protectedProcedure
@@ -16,6 +17,7 @@ export const searchRouter = router({
         workspaceId: z.string().uuid(),
         channelId: z.string().uuid().optional(),
         limit: z.number().min(1).max(50).default(20),
+        mode: z.enum(["keyword", "semantic", "hybrid"]).default("hybrid"),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -34,46 +36,35 @@ export const searchRouter = router({
         return { results: [] };
       }
 
-      const tsquery = sql`plainto_tsquery('english', ${input.query})`;
-      const likePattern = `%${input.query}%`;
+      const results = await hybridSearch({
+        query: input.query,
+        workspaceId: input.workspaceId,
+        channelId: input.channelId,
+        limit: input.limit,
+        mode: input.mode as SearchMode,
+      });
 
-      const conditions = [
-        eq(channels.workspaceId, input.workspaceId),
-        isNull(messages.deletedAt),
-        sql`(${messages.searchVector} @@ ${tsquery} OR ${messages.content} ILIKE ${likePattern})`,
-      ];
-
-      if (input.channelId) {
-        conditions.push(eq(messages.channelId, input.channelId));
-      }
-
-      const results = await ctx.db
-        .select({
+      return {
+        results: results.map((r) => ({
           message: {
-            id: messages.id,
-            content: messages.content,
-            channelId: messages.channelId,
-            createdAt: messages.createdAt,
+            id: r.messageId,
+            content: r.content,
+            channelId: r.channelId,
+            createdAt: r.createdAt,
           },
           author: {
-            id: users.id,
-            username: users.username,
-            name: users.name,
-            image: users.image,
+            id: r.authorId,
+            username: r.authorUsername,
+            name: r.authorName,
+            image: r.authorImage,
           },
           channel: {
-            name: channels.name,
+            name: r.channelName,
           },
-          headline: sql<string>`ts_headline('english', ${messages.content}, ${tsquery})`.as("headline"),
-          rank: sql<number>`COALESCE(ts_rank(${messages.searchVector}, ${tsquery}), 0)`.as("rank"),
-        })
-        .from(messages)
-        .innerJoin(users, eq(users.id, messages.authorId))
-        .innerJoin(channels, eq(channels.id, messages.channelId))
-        .where(and(...conditions))
-        .orderBy(sql`COALESCE(ts_rank(${messages.searchVector}, ${tsquery}), 0) DESC`)
-        .limit(input.limit);
-
-      return { results };
+          headline: r.headline,
+          rank: r.score,
+          score: r.score,
+        })),
+      };
     }),
 });

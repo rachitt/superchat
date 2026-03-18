@@ -1,7 +1,8 @@
+import { createHash } from "node:crypto";
 import type { Server, Socket } from "socket.io";
 import { eq, and, desc, isNull, sql } from "drizzle-orm";
 import type { ClientToServerEvents, ServerToClientEvents } from "@superchat/shared";
-import { AI_BOT_NAME } from "@superchat/shared";
+import { AI_BOT_NAME, AI_MAX_AGENT_STEPS } from "@superchat/shared";
 import { streamAiChat } from "../../services/ai.js";
 import { db } from "../../db/index.js";
 import { messages, user as users } from "../../db/schema/index.js";
@@ -20,6 +21,12 @@ type IOSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 
 /** Track active AI streams so they can be cancelled */
 const activeStreams = new Map<string, AbortController>();
+
+/** Create a hash key for tool dedup based on name + args */
+function toolCallHash(name: string, args: Record<string, unknown>): string {
+  const hash = createHash("md5").update(`${name}:${JSON.stringify(args)}`).digest("hex");
+  return hash;
+}
 
 export function registerAiHandlers(io: IOServer, socket: IOSocket) {
   const userId = socket.data.userId as string;
@@ -124,12 +131,23 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
         userId,
         workspaceId,
         tools: aiTools,
+        onStepFinish: ({ stepNumber, toolName }) => {
+          log.info({ step: stepNumber, toolName, messageId }, "Agent step finished");
+          io.to(`channel:${channelId}`).emit("ai:step", {
+            channelId,
+            messageId,
+            step: stepNumber,
+            toolName,
+            description: toolName ? `Using ${toolName}...` : `Thinking (step ${stepNumber})...`,
+          });
+        },
       });
       log.info("streamAiChat returned, iterating stream");
 
       let fullContent = "";
-      const executedTools = new Set<string>();
-      const toolResults = new Map<string, unknown>();
+      // Dedup by name+args hash instead of just name
+      const executedToolHashes = new Set<string>();
+      const toolResults = new Map<string, { toolName: string; result: unknown }>();
 
       for await (const chunk of result.fullStream) {
         if (abortController.signal.aborted) break;
@@ -145,10 +163,10 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
         } else if (chunk.type === "tool-call") {
           log.info({ toolName: chunk.toolName, args: chunk.args }, "AI tool call");
         } else if (chunk.type === "tool-result") {
-          // Deduplicate by tool name (prevents double createPoll/startGame across steps)
-          if (!executedTools.has(chunk.toolName)) {
-            executedTools.add(chunk.toolName);
-            toolResults.set(chunk.toolName, chunk.result);
+          const hash = toolCallHash(chunk.toolName, chunk.args as Record<string, unknown>);
+          if (!executedToolHashes.has(hash)) {
+            executedToolHashes.add(hash);
+            toolResults.set(hash, { toolName: chunk.toolName, result: chunk.result });
             log.info({ toolName: chunk.toolName, result: chunk.result }, "AI tool result");
             io.to(`channel:${channelId}`).emit("ai:tool_call", {
               channelId,
@@ -158,7 +176,7 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
               result: chunk.result,
             });
           } else {
-            log.info({ toolName: chunk.toolName }, "Skipping duplicate tool call");
+            log.info({ toolName: chunk.toolName }, "Skipping duplicate tool call (same args)");
           }
         }
       }
@@ -166,7 +184,7 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
       clearTimeout(timeout);
 
       if (abortController.signal.aborted) {
-        const timeoutMsg = "AI response timed out after 30 seconds.";
+        const timeoutMsg = "AI response timed out.";
         await db
           .update(messages)
           .set({ content: fullContent ? `${fullContent}\n\n(${timeoutMsg})` : timeoutMsg })
@@ -186,16 +204,15 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
       // Update the message in the database with the full content
       // If tools were called but no text generated, create a summary
       let finalContent = fullContent;
-      if (!finalContent && executedTools.size > 0) {
+      if (!finalContent && toolResults.size > 0) {
         const parts: string[] = [];
-        for (const toolName of executedTools) {
-          const result = toolResults.get(toolName) as Record<string, unknown> | undefined;
+        for (const [, { toolName, result }] of toolResults) {
           switch (toolName) {
             case "createPoll":
               parts.push("Here's your poll!");
               break;
             case "startGame": {
-              const gameType = (result?.gameType as string) ?? "game";
+              const gameType = (result as any)?.gameType ?? "game";
               parts.push(`Started a ${gameType} game — check the game panel! 🎮`);
               break;
             }
@@ -215,6 +232,16 @@ export function registerAiHandlers(io: IOServer, socket: IOSocket) {
             case "generateImage":
               parts.push((result as any)?.success ? "Here's your generated image!" : `Image generation failed: ${(result as any)?.error}`);
               break;
+            case "createReminder": {
+              const r = result as any;
+              if (r?.success) {
+                const fireAt = new Date(r.fireAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
+                parts.push(`Reminder set! I'll notify you at ${fireAt}.`);
+              } else {
+                parts.push("Failed to set reminder.");
+              }
+              break;
+            }
             default:
               parts.push(`Done.`);
           }
