@@ -173,6 +173,4 @@ pnpm --filter @superchat/shared test
 - **Vercel AI SDK over raw API calls**: Multi-provider streaming with automatic tool use loops, structured output generation, and maxSteps-based agent orchestration.
 - **Drizzle over Prisma**: Lighter, faster, SQL-like query builder with zero runtime overhead. Direct control over migrations and schema.
 
-## License
 
-MIT
